@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mosbat AI — Command HQ Documentation</title>
+<style>
+  @page { margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2430; line-height: 1.6; font-size: 13px; margin: 0;
+  }
+  h1,h2,h3,h4 { color: #1a1206; line-height: 1.25; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 21px; margin: 30px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e8b454; }
+  h3 { font-size: 16px; margin: 20px 0 6px; color: #8a5a10; }
+  h4 { font-size: 13.5px; margin: 14px 0 4px; color: #444; }
+  p { margin: 6px 0; }
+  code, .mono { font-family: "JetBrains Mono", "Consolas", monospace; font-size: 12px; }
+  code { background: #f3efe6; color: #8a5a10; padding: 1px 5px; border-radius: 4px; }
+  pre {
+    background: #1a1812; color: #e8dcc0; padding: 12px 14px; border-radius: 8px;
+    overflow-x: auto; font-family: "JetBrains Mono","Consolas",monospace; font-size: 11.5px;
+    line-height: 1.5; border-left: 3px solid #e8b454; white-space: pre-wrap;
+  }
+  pre .c { color: #8a9a78; } /* comment */
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px; }
+  th, td { border: 1px solid #ddd6c8; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #f7f2e7; color: #6a4810; font-weight: 600; }
+  tr:nth-child(even) td { background: #faf8f2; }
+  .tag { display:inline-block; background:#fff6e0; border:1px solid #e8b454; color:#8a5a10;
+         padding:1px 8px; border-radius:99px; font-size:11px; font-family:"JetBrains Mono",monospace; }
+  .card { border:1px solid #e6dfce; border-radius:10px; padding:12px 16px; margin:10px 0; background:#fffdf8; }
+  .file { font-family:"JetBrains Mono",monospace; font-size:12.5px; font-weight:600; color:#8a5a10; }
+  .muted { color:#7a7466; }
+  .pagebreak { page-break-before: always; }
+  .cover { text-align:center; padding-top: 60mm; }
+  .cover .logo { width:90px; height:90px; margin:0 auto 18px; display:block; }
+  .cover h1 { font-size:40px; }
+  .cover .sub { font-size:15px; color:#8a7a55; letter-spacing:.25em; text-transform:uppercase; }
+  .cover .meta { margin-top:30px; font-size:12px; color:#999; }
+  .toc li { margin:4px 0; }
+  .toc a { color:#1f2430; text-decoration:none; }
+  .lead { font-size:14px; color:#3a3a3a; }
+  .pill-ok{color:#1f9e62;font-weight:600;}
+  .pill-todo{color:#c08818;font-weight:600;}
+  ul.tight { margin:6px 0; padding-left:20px; }
+  ul.tight li { margin:3px 0; }
+  .kbd { background:#1a1812; color:#e8b454; padding:1px 6px; border-radius:4px; font-family:monospace; font-size:11px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════ COVER ════════════ -->
+<div class="cover">
+  <svg class="logo" viewBox="0 0 48 48" fill="none">
+    <path d="M24 3 L42 13.5 V34.5 L24 45 L6 34.5 V13.5 Z" stroke="#e8b454" stroke-width="1.5"/>
+    <path d="M24 14 C19 13, 15 15.5, 14.5 19.5 C11.5 20.5, 10.5 24.5, 13.5 26.5 C11.5 30.5, 15 33.5, 19 31.5 C20 34.5, 24 34.5, 24 31" stroke="#e8b454" stroke-width="1.3" stroke-linecap="round"/>
+    <path d="M24 14 C29 13, 33 15.5, 33.5 19.5 C36.5 20.5, 37.5 24.5, 34.5 26.5 C36.5 30.5, 33 33.5, 29 31.5 C28 34.5, 24 34.5, 24 31" stroke="#e8b454" stroke-width="1.3" stroke-linecap="round"/>
+    <rect x="20" y="20" width="8" height="8" rx="1" fill="#e8b454"/>
+  </svg>
+  <h1>Mosbat AI</h1>
+  <div class="sub">Command HQ — Technical Documentation</div>
+  <div class="meta">
+    AI Agent Control Plane &middot; CodeIgniter 4 + Supabase + Claude<br>
+    Generated <script>document.write(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}));</script>
+  </div>
+</div>
+
+<!-- ════════════ TOC ════════════ -->
+<div class="pagebreak"></div>
+<h2>Contents</h2>
+<ol class="toc">
+  <li><a href="#overview">What Mosbat AI Is</a></li>
+  <li><a href="#how">How It Works (The Big Picture)</a></li>
+  <li><a href="#stack">Technology Stack</a></li>
+  <li><a href="#flow">The Message Flow — Step by Step</a></li>
+  <li><a href="#features">Features Overview</a></li>
+  <li><a href="#tools">The Agent Tools</a></li>
+  <li><a href="#files">Code Walkthrough — Every File</a></li>
+  <li><a href="#setup">Setup &amp; Activation Checklist</a></li>
+  <li><a href="#glossary">Glossary</a></li>
+</ol>
+
+<!-- ════════════ OVERVIEW ════════════ -->
+<div class="pagebreak"></div>
+<h2 id="overview">1. What Mosbat AI Is</h2>
+<p class="lead">Mosbat AI is a <strong>command center for running companies with AI agents</strong>. Instead of one chatbot, you have an organization of AI employees — a CEO, directors, and specialists — each with their own role, skills, and memory. You issue commands and they respond, delegate to each other, and take real actions.</p>
+
+<div class="card">
+<strong>The simple analogy:</strong> Think of it like an office building. Each AI agent is an employee with a job description (their instructions), a manager (parent agent), and abilities (tools). You're the chairman — you give direction, and the org carries it out.
+</div>
+
+<h3>What makes it different from a normal chatbot</h3>
+<table>
+<tr><th>Normal chatbot</th><th>Mosbat AI</th></tr>
+<tr><td>One assistant</td><td>A full org chart of specialized agents</td></tr>
+<tr><td>Only talks</td><td>Sends real emails, searches the web, generates images, hires agents</td></tr>
+<tr><td>Forgets everything</td><td>Remembers conversations (stored in database)</td></tr>
+<tr><td>You do the work</td><td>Agents process tasks in the background autonomously</td></tr>
+</table>
+
+<!-- ════════════ HOW ════════════ -->
+<h2 id="how">2. How It Works (The Big Picture)</h2>
+<p>There are three layers working together:</p>
+<pre>
+  YOU (Chairman)
+      |
+      v
+  +------------------ CONTROL PLANE (the website) ------------------+
+  |  HQ Dashboard  -  Company pages  -  Chat  -  Agents  -  Tasks   |
+  +----------------------------------------------------------------+
+      |
+      v
+  +------------------ BRAIN (Claude AI) ---------------------------+
+  |  Reads the agent's full briefing, thinks, writes the response  |
+  +----------------------------------------------------------------+
+      |
+      v
+  +------------------ HANDS (Tools + Database) --------------------+
+  |  Email - Web Search - Image - Hire - Tasks - Supabase storage  |
+  +----------------------------------------------------------------+
+</pre>
+<ul class="tight">
+  <li><strong>Control plane</strong> — the web pages you click around in (built in PHP).</li>
+  <li><strong>Brain</strong> — Claude, the AI model that does the thinking.</li>
+  <li><strong>Hands</strong> — the tools and database that let agents take real actions and remember things.</li>
+</ul>
+
+<!-- ════════════ STACK ════════════ -->
+<h2 id="stack">3. Technology Stack</h2>
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Role</th></tr>
+<tr><td>Backend framework</td><td>CodeIgniter 4 (PHP)</td><td>Runs the website, routes, controllers</td></tr>
+<tr><td>Database</td><td>Supabase (PostgreSQL + REST)</td><td>Stores agents, skills, conversations, tasks</td></tr>
+<tr><td>AI model</td><td>Anthropic Claude</td><td>The intelligence behind every agent</td></tr>
+<tr><td>Web search</td><td>Serper.dev</td><td>Real Google results for agents</td></tr>
+<tr><td>Email</td><td>Hostinger SMTP</td><td>Agents send real emails</td></tr>
+<tr><td>Images</td><td>Pollinations (free) / OpenAI DALL·E 3</td><td>Agents generate images</td></tr>
+<tr><td>Frontend</td><td>HTML + Tailwind (CDN) + vanilla JS</td><td>The UI, no build step</td></tr>
+</table>
+
+<!-- ════════════ FLOW ════════════ -->
+<div class="pagebreak"></div>
+<h2 id="flow">4. The Message Flow — Step by Step</h2>
+<p>When you send a message in chat, here's exactly what happens:</p>
+<pre>
+1. You type a message and hit Send.
+2. The browser calls  /api/chat/stream
+3. PHP builds the SYSTEM PROMPT (the agent's full briefing):
+       a) the agent's own instructions
+       b) the list of teammates it can delegate to
+       c) its assigned skills (extra knowledge)
+       d) the tool manual (email, search, image, hire...)
+       e) a "be brief" style rule
+4. PHP loads the last 12 conversation turns (memory) from Supabase.
+5. PHP sends the briefing + your message to Claude.
+6. Claude streams its answer back word-by-word -> shown live in chat.
+7. When Claude finishes, PHP scans the answer for tool tags.
+8. Any tools found are EXECUTED (send email, generate image, etc.).
+9. Tool results appear as cards in the chat.
+10. The conversation is saved to Supabase for next time.
+</pre>
+<div class="card">
+<strong>Key point:</strong> Building the briefing is pure PHP string work — Claude is only called <em>once</em> per message. Claude never builds its own prompt; it just receives the finished briefing and your question together.
+</div>
+
+<!-- ════════════ FEATURES ════════════ -->
+<h2 id="features">5. Features Overview</h2>
+
+<h3>HQ Dashboard <span class="tag">/</span></h3>
+<ul class="tight">
+  <li>Welcome strip with time-based greeting and chairman identity.</li>
+  <li>Metric tiles: companies, total agents, active agents.</li>
+  <li><strong>Quick Command</strong> — issue a directive to any company's CEO without leaving HQ.</li>
+  <li>Portfolio of company cards (click to enter a company).</li>
+  <li>Settings → global Skills manager (create/edit/delete skills).</li>
+</ul>
+
+<h3>Company Page <span class="tag">/company/:id</span></h3>
+<ul class="tight">
+  <li><strong>Chat</strong> — live streaming command channel with the company's director.</li>
+  <li><strong>Dashboard</strong> — metrics, recent tasks, active agents, full roster.</li>
+  <li><strong>Inbox</strong> — every assistant response captured (All / Unread).</li>
+  <li><strong>Issues</strong> — assigned tasks (from database) + session activity, with cancel/retry.</li>
+  <li><strong>Agents</strong> — grid of agent cards + a detail panel (Overview, Instructions, Skills, Runs).</li>
+</ul>
+
+<h3>Autonomous Tasks</h3>
+<p>Assign a task to an agent and a background job (<code>php spark agent:run</code>) picks it up, has the agent complete it using tools, and saves the output — all without you being present.</p>
+
+<h3>Skills System</h3>
+<p>Reusable knowledge blocks (context / instruction / tool / memory) you attach to agents. They get injected into the agent's briefing so it knows your business specifics.</p>
+
+<h3>Org Management (Paperclip-style)</h3>
+<ul class="tight">
+  <li>The CEO can <strong>hire</strong> new agents via a tool.</li>
+  <li>The CEO can <strong>fire</strong> (deactivate) agents — except the top director.</li>
+  <li>You can <strong>delete</strong> agents from the UI (children auto re-parent).</li>
+</ul>
+
+<!-- ════════════ TOOLS ════════════ -->
+<div class="pagebreak"></div>
+<h2 id="tools">6. The Agent Tools</h2>
+<p>Agents take real actions by writing special tags in their response. PHP detects these tags after the response and executes them.</p>
+
+<h3><span class="tag">[SEARCH]</span> Web Search</h3>
+<p>Gets real, current Google results. Powered by Serper.dev.</p>
+<pre>[SEARCH]
+query: top community reward platforms 2025
+[/SEARCH]</pre>
+
+<h3><span class="tag">[SEND_EMAIL]</span> Send Email</h3>
+<p>Sends a real email through Hostinger SMTP.</p>
+<pre>[SEND_EMAIL]
+to: chairman@example.com
+subject: Weekly Report
+body:
+Dear Chairman, here is this week's summary...
+[/SEND_EMAIL]</pre>
+
+<h3><span class="tag">[GENERATE_IMAGE]</span> Generate Image</h3>
+<p>Creates a real image. Uses free Pollinations by default, or DALL·E 3 if an OpenAI key is set. The server downloads the image and hosts it locally so it always displays.</p>
+<pre>[GENERATE_IMAGE]
+prompt: A mental health awareness illustration, warm gold and teal...
+size: 1024x1024
+[/GENERATE_IMAGE]</pre>
+
+<h3><span class="tag">[CREATE_TASK]</span> Assign Task to an Agent</h3>
+<p>Delegates work to another agent. The task is saved and the runner processes it.</p>
+<pre>[CREATE_TASK]
+agent: Content Agent
+title: Write 5 social posts about community growth
+priority: high
+description: Focus on positivity and our brand voice.
+[/CREATE_TASK]</pre>
+
+<h3><span class="tag">[HIRE_AGENT]</span> Hire a New Agent</h3>
+<p>Creates a real new agent in the company org.</p>
+<pre>[HIRE_AGENT]
+name: SEO Specialist
+role: SEO Manager
+reports_to: Marketing Director
+prompt: You are the SEO Specialist responsible for...
+[/HIRE_AGENT]</pre>
+
+<h3><span class="tag">[FIRE_AGENT]</span> Fire (Deactivate) an Agent</h3>
+<p>Deactivates an agent (reversible). Cannot fire the top director.</p>
+<pre>[FIRE_AGENT]
+agent: Outreach Agent
+[/FIRE_AGENT]</pre>
+
+<!-- ════════════ FILES ════════════ -->
+<div class="pagebreak"></div>
+<h2 id="files">7. Code Walkthrough — Every File</h2>
+<p class="muted">Grouped by folder. Each entry explains what the file is for and how it works in plain words.</p>
+
+<h3>Controllers <span class="muted">(handle web requests)</span></h3>
+
+<div class="card">
+<div class="file">app/Controllers/Dashboard.php</div>
+<p><strong>Purpose:</strong> Serves the two main pages.</p>
+<ul class="tight">
+<li><code>index()</code> — builds the HQ dashboard: chairman info, the list of companies, agent counts, then renders <code>dashboard.php</code>.</li>
+<li><code>company($id)</code> — loads one company's agents (real ones from Supabase, or demo data), finds the root/director agent, then renders <code>company.php</code>.</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="file">app/Controllers/ChatApi.php</div>
+<p><strong>Purpose:</strong> The brain's gateway — all chat and agent operations.</p>
+<ul class="tight">
+<li><code>stream()</code> — the main chat endpoint. Builds the system prompt, calls Claude with streaming, then runs any tools in the reply.</li>
+<li><code>send()</code> — non-streaming chat (used by the agent detail "Direct Command").</li>
+<li><code>composeSystemPrompt()</code> — assembles the agent briefing: role + team + skills + tool manual + brevity rules.</li>
+<li><code>createAgent()</code> / <code>updateAgent()</code> / <code>deleteAgent()</code> — manage agents.</li>
+<li><code>skills()</code>, <code>allSkills()</code>, <code>assignSkill()</code>, <code>removeSkill()</code>, skill CRUD — manage skills.</li>
+<li><code>history()</code>, <code>agentHistory()</code> — load past conversations.</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="file">app/Controllers/TaskApi.php</div>
+<p><strong>Purpose:</strong> Manage autonomous tasks.</p>
+<ul class="tight">
+<li><code>list($companyId)</code> — return all tasks for a company.</li>
+<li><code>create()</code> — assign a new task to an agent (status starts as <em>pending</em>).</li>
+<li><code>update()</code> — change a task's status/output.</li>
+<li><code>cancel()</code> — cancel a task <em>and</em> write a signal file so a running job stops within 2 seconds.</li>
+</ul>
+</div>
+
+<h3>Models <span class="muted">(talk to the database)</span></h3>
+<div class="card">
+<div class="file">app/Models/SupabaseModel.php</div>
+<p><strong>Purpose:</strong> The single doorway to Supabase. Wraps Supabase's REST API with simple PHP methods.</p>
+<ul class="tight">
+<li>Agents: <code>getOrg</code>, <code>getCompanyAgents</code>, <code>getAgentBySlug</code>, <code>getAgentById</code>, <code>createAgent</code>, <code>updateAgent</code>, <code>deleteAgent</code>.</li>
+<li>Skills: <code>getAgentSkills</code>, <code>getAllSkills</code>, <code>createSkill</code>, <code>updateSkill</code>, <code>deleteSkill</code>, <code>assignSkillToAgent</code>, <code>removeSkillFromAgent</code>.</li>
+<li>Conversations: <code>getRecentTurns</code> (memory window), <code>saveTurn</code>, <code>getAllAgentTurns</code>.</li>
+<li>Tasks: <code>createTask</code>, <code>getCompanyTasks</code>, <code>getPendingTasks</code>, <code>claimTask</code> (atomic lock), <code>updateTask</code>, <code>resetStuckTasks</code>, <code>getTaskById</code>.</li>
+<li><code>getLastError()</code> — surfaces the real Supabase error when something fails.</li>
+</ul>
+<p class="muted"><strong>Clever bit:</strong> <code>claimTask</code> updates a row only if it's still <em>pending</em>, so two background jobs can never grab the same task.</p>
+</div>
+
+<h3>Libraries <span class="muted">(the brain + the hands)</span></h3>
+<div class="card">
+<div class="file">app/Libraries/ClaudeService.php</div>
+<p><strong>Purpose:</strong> Talks to Claude's API.</p>
+<ul class="tight">
+<li><code>chat()</code> — send a prompt, get a full reply.</li>
+<li><code>chatStream()</code> — stream the reply word-by-word. Also accepts an <em>abort callback</em> checked every 2 seconds, so a cancelled task stops mid-stream.</li>
+<li><code>cancelSignalPath()</code> — the shared file path used for instant cancellation.</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="file">app/Libraries/ToolDispatcher.php</div>
+<p><strong>Purpose:</strong> The traffic controller for tools. Scans an agent's reply for tool tags and runs each one.</p>
+<ul class="tight">
+<li><code>hasTools()</code> — quick check if any tool tags exist.</li>
+<li><code>executeAll()</code> — find and run every tool, return the combined results.</li>
+<li>Routes to: SearchService, EmailService, ImageService, and Supabase (for tasks/hire/fire).</li>
+<li><code>toolDocs()</code> — the tool manual injected into agent briefings.</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="file">app/Libraries/SearchService.php</div>
+<p><strong>Purpose:</strong> Calls Serper.dev and formats Google results (answer box, knowledge graph, top results, news) into clean text for the agent.</p>
+</div>
+
+<div class="card">
+<div class="file">app/Libraries/EmailService.php</div>
+<p><strong>Purpose:</strong> Sends real emails via Hostinger SMTP using CodeIgniter's email library. Converts the agent's text into a clean HTML email.</p>
+</div>
+
+<div class="card">
+<div class="file">app/Libraries/ImageService.php</div>
+<p><strong>Purpose:</strong> Generates images. Picks free Pollinations or paid DALL·E 3 automatically. Downloads the result <em>server-side</em> and saves it to <code>public/generated/</code> so the browser always loads a stable, same-origin file.</p>
+</div>
+
+<h3>Commands <span class="muted">(background jobs run from the terminal)</span></h3>
+<div class="card">
+<div class="file">app/Commands/AgentRun.php</div>
+<p><strong>Purpose:</strong> The autonomous worker. Run every minute by cron.</p>
+<ul class="tight">
+<li>Resets tasks stuck over 10 minutes (crash recovery).</li>
+<li>Grabs pending tasks, locks each one, builds the agent briefing.</li>
+<li>Runs a tool loop (up to 8 turns): Claude responds → tools run → results fed back → repeat until done.</li>
+<li>Checks for cancellation before each step. Saves the final output.</li>
+</ul>
+<p class="mono muted">Run: php spark agent:run &nbsp;|&nbsp; Preview: php spark agent:run --dry</p>
+</div>
+
+<div class="card">
+<div class="file">app/Commands/ToolsTest.php</div>
+<p><strong>Purpose:</strong> Quick test harness to verify web search and email work.</p>
+<p class="mono muted">Run: php spark tools:test</p>
+</div>
+
+<h3>Views <span class="muted">(the pages you see)</span></h3>
+<div class="card">
+<div class="file">app/Views/dashboard.php</div>
+<p><strong>Purpose:</strong> The HQ dashboard UI — welcome strip, metric tiles, Quick Command, company portfolio, settings/skills modal. Dark theme with gold accents and a circuit-board background with rotating gears.</p>
+</div>
+<div class="card">
+<div class="file">app/Views/company.php</div>
+<p><strong>Purpose:</strong> The full company workspace — sidebar nav and 5 sections (Chat, Dashboard, Inbox, Issues, Agents) plus the agent detail panel. Handles streaming chat, tool rendering (email/image/task cards), task management, skills, hire/fire/delete. Same gold-on-dark theme + circuit background.</p>
+</div>
+
+<h3>Config &amp; Database</h3>
+<div class="card">
+<div class="file">app/Config/Routes.php</div>
+<p><strong>Purpose:</strong> Maps URLs to controller methods (the two pages + all <code>/api/*</code> endpoints).</p>
+</div>
+<div class="card">
+<div class="file">database/tasks_migration.sql</div>
+<p><strong>Purpose:</strong> Creates the <code>tasks</code> table (with status/priority rules, indexes, and an auto-updating timestamp). Run once in Supabase.</p>
+</div>
+<div class="card">
+<div class="file">.env</div>
+<p><strong>Purpose:</strong> All secrets and settings — Claude key, Supabase keys, SMTP, Serper, OpenAI, memory window. Never commit this file publicly.</p>
+</div>
+
+<!-- ════════════ SETUP ════════════ -->
+<div class="pagebreak"></div>
+<h2 id="setup">8. Setup &amp; Activation Checklist</h2>
+<table>
+<tr><th>Step</th><th>What to do</th><th>Status</th></tr>
+<tr><td>1</td><td>Set <code>anthropic.apiKey</code> in <code>.env</code></td><td class="pill-ok">required</td></tr>
+<tr><td>2</td><td>Set <code>supabase.url</code> + <code>supabase.serviceKey</code></td><td class="pill-ok">required</td></tr>
+<tr><td>3</td><td>Run <code>database/tasks_migration.sql</code> in Supabase SQL Editor</td><td class="pill-todo">enables tasks</td></tr>
+<tr><td>4</td><td>Add cron: <span class="kbd">* * * * * php spark agent:run</span></td><td class="pill-todo">enables autonomy</td></tr>
+<tr><td>5</td><td>Set <code>smtp.*</code> (Hostinger email)</td><td class="pill-ok">email works</td></tr>
+<tr><td>6</td><td>Set <code>serper.apiKey</code> (free at serper.dev)</td><td class="pill-todo">enables web search</td></tr>
+<tr><td>7</td><td>Image generation</td><td class="pill-ok">works free (no key)</td></tr>
+<tr><td>8</td><td>Make <code>public/generated/</code> writable on the server</td><td class="pill-todo">for images on VPS</td></tr>
+</table>
+
+<h3>Tool status at a glance</h3>
+<table>
+<tr><th>Tool</th><th>Provider</th><th>Needs</th></tr>
+<tr><td>Image generation</td><td>Pollinations (free) / DALL·E 3</td><td>nothing (free) / OpenAI key (upgrade)</td></tr>
+<tr><td>Email</td><td>Hostinger SMTP</td><td>SMTP credentials (set)</td></tr>
+<tr><td>Web search</td><td>Serper.dev</td><td>free API key</td></tr>
+<tr><td>Tasks / Hire / Fire</td><td>Supabase</td><td>run the SQL migration</td></tr>
+</table>
+
+<!-- ════════════ GLOSSARY ════════════ -->
+<h2 id="glossary">9. Glossary</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>System prompt</td><td>The full briefing handed to the AI before your question — role, team, skills, tools.</td></tr>
+<tr><td>Agent</td><td>One AI employee with a name, role, instructions, and skills.</td></tr>
+<tr><td>Skill</td><td>A reusable block of knowledge or behavior attached to agents.</td></tr>
+<tr><td>Tool</td><td>A real action an agent can trigger (email, search, image, hire...).</td></tr>
+<tr><td>Task</td><td>A unit of work assigned to an agent, processed in the background.</td></tr>
+<tr><td>Runner</td><td>The background job (<code>agent:run</code>) that completes pending tasks.</td></tr>
+<tr><td>Streaming</td><td>The AI's reply appearing word-by-word in real time.</td></tr>
+<tr><td>Root / Director</td><td>The top agent of a company (no manager) — usually the CEO.</td></tr>
+<tr><td>Memory window</td><td>The last N conversation turns sent to the AI so it remembers context.</td></tr>
+</table>
+
+<p style="margin-top:40px;text-align:center;color:#b0a890;font-size:11px;font-family:monospace;">
+MOSBAT AI &middot; COMMAND HQ &middot; TECHNICAL DOCUMENTATION
+</p>
+
+</body>
+</html>
