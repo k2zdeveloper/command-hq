@@ -14,6 +14,7 @@ class Dashboard extends BaseController
             'name'     => getenv('chairman.name')    ?: 'Mosbat',
             'title'    => getenv('chairman.title')   ?: 'Chairman & CEO',
             'initials' => getenv('chairman.initials') ?: 'M',
+            'logo'     => '/logos/mosbat.svg',
         ];
 
         $companies = [
@@ -23,6 +24,7 @@ class Dashboard extends BaseController
                 'description' => 'Community growth. Rewarding positivity. Operating the Positive Nation Economy.',
                 'status'      => 'active',
                 'mock'        => false,
+                'logo'        => '/logos/positive-nation.svg',
                 'agents'      => $supabase->getOrg('positive_nation'),
             ],
             [
@@ -59,6 +61,7 @@ class Dashboard extends BaseController
                 'name'        => 'Positive Nation LLC',
                 'description' => 'Community growth. Rewarding positivity. Operating the Positive Nation Economy.',
                 'mock'        => false,
+                'logo'        => '/logos/positive-nation.svg',
             ],
             'positive_force_media' => [
                 'id'          => 'positive_force_media',
@@ -97,6 +100,7 @@ class Dashboard extends BaseController
             'name'     => getenv('chairman.name')     ?: 'Mosbat',
             'title'    => getenv('chairman.title')    ?: 'Chairman & CEO',
             'initials' => getenv('chairman.initials') ?: 'M',
+            'logo'     => '/logos/mosbat.svg',
         ];
 
         return view('company', [

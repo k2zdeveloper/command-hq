@@ -265,21 +265,25 @@ class ToolDispatcher
 
     private function saveDocument(string $title, string $content): string
     {
-        $dir = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
-        if (!is_dir($dir)) @mkdir($dir, 0775, true);
-        if (!is_dir($dir) || !is_writable($dir)) {
-            return "⚠ Cannot save document — public/generated/ is not writable.";
-        }
-
         $html = $this->documentHtml($title, $content);
         $name = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '.html';
-        $path = $dir . DIRECTORY_SEPARATOR . $name;
 
-        if (file_put_contents($path, $html) === false) {
-            return "⚠ Failed to write document file.";
+        // 1) Preferred: Supabase Storage → opens on any device
+        $url = $this->supabase->uploadToStorage($name, $html, 'text/html');
+
+        // 2) Fallback: local disk
+        if (!$url) {
+            $dir = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
+            if (!is_dir($dir)) @mkdir($dir, 0775, true);
+            if (!is_dir($dir) || !is_writable($dir)) {
+                return "⚠ Cannot save document — storage upload failed and public/generated/ is not writable.";
+            }
+            if (file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $html) === false) {
+                return "⚠ Failed to write document file.";
+            }
+            $url = '/generated/' . $name;
         }
 
-        $url = '/generated/' . $name;
         $this->recordArtifact('document', mb_substr($title, 0, 120), $url, 'text/html');
 
         return "✓ Document saved\nFILE_URL: {$url}\nTitle: {$title}\n(Open it, then Print → Save as PDF for a PDF copy.)";

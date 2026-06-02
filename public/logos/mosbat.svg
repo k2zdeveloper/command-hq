@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 170">
+  <defs>
+    <linearGradient id="wing-l" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a1e3d"/>
+      <stop offset="100%" stop-color="#1a3a6e"/>
+    </linearGradient>
+    <linearGradient id="wing-r" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0a1e3d"/>
+      <stop offset="100%" stop-color="#1a3a6e"/>
+    </linearGradient>
+    <linearGradient id="m-grad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#1e4a8a"/>
+      <stop offset="100%" stop-color="#0d2347"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── LEFT WING ── -->
+  <polygon points="2,140 22,45 52,78 38,140" fill="url(#wing-l)"/>
+  <!-- left wing inner facet -->
+  <polygon points="22,45 42,58 52,38" fill="#1a4070" opacity="0.9"/>
+  <!-- left wing tip accent -->
+  <polyline points="2,140 22,45" fill="none" stroke="#1a7fd4" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- ── RIGHT WING ── -->
+  <polygon points="198,140 178,45 148,78 162,140" fill="url(#wing-r)"/>
+  <!-- right wing inner facet -->
+  <polygon points="178,45 158,58 148,38" fill="#1a4070" opacity="0.9"/>
+  <!-- right wing tip accent -->
+  <polyline points="198,140 178,45" fill="none" stroke="#1a7fd4" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- ── M BODY ── -->
+  <!-- left leg -->
+  <polygon points="38,140 38,30 100,82 62,140" fill="url(#m-grad)"/>
+  <!-- right leg -->
+  <polygon points="162,140 162,30 100,82 138,140" fill="url(#m-grad)"/>
+  <!-- left peak -->
+  <polygon points="38,30 62,55 100,82 70,30" fill="#1e4a8a"/>
+  <!-- right peak -->
+  <polygon points="162,30 138,55 100,82 130,30" fill="#1e4a8a"/>
+
+  <!-- M peak cyan notch lines -->
+  <line x1="38" y1="30" x2="70" y2="30" stroke="#00aaff" stroke-width="2"/>
+  <line x1="162" y1="30" x2="130" y2="30" stroke="#00aaff" stroke-width="2"/>
+
+  <!-- ── BAT FACE / BODY ── -->
+  <path d="M75,105 Q100,128 125,105 L118,96 Q100,118 82,96 Z" fill="#0d77cc"/>
+  <!-- bat eye dots -->
+  <circle cx="90" cy="100" r="3.5" fill="#00aaff"/>
+  <circle cx="110" cy="100" r="3.5" fill="#00aaff"/>
+  <!-- bat nose bridge -->
+  <line x1="97" y1="105" x2="103" y2="105" stroke="#00aaff" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- ── CYAN HIGHLIGHT EDGES on M ── -->
+  <polyline points="38,140 38,30" fill="none" stroke="#1a7fd4" stroke-width="2" stroke-linecap="round"/>
+  <polyline points="162,140 162,30" fill="none" stroke="#1a7fd4" stroke-width="2" stroke-linecap="round"/>
+  <polyline points="38,30 100,82 162,30" fill="none" stroke="#2090e8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- outer wing trailing edge -->
+  <polyline points="22,45 52,78 38,140" fill="none" stroke="#103060" stroke-width="1.5"/>
+  <polyline points="178,45 148,78 162,140" fill="none" stroke="#103060" stroke-width="1.5"/>
+</svg>

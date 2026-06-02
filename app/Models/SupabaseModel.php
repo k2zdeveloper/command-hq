@@ -18,6 +18,8 @@ class SupabaseModel
 {
     private CURLRequest $http;
     private string $baseUrl;
+    private string $projectUrl = '';
+    private string $serviceKey = '';
     private array  $headers;
     private string $lastError = '';
 
@@ -36,7 +38,9 @@ class SupabaseModel
             log_message('error', 'Supabase URL or service key is missing from .env');
         }
 
-        $this->baseUrl = $url . '/rest/v1';
+        $this->projectUrl = $url;
+        $this->serviceKey = $key;
+        $this->baseUrl    = $url . '/rest/v1';
         $this->headers = [
             'apikey'        => $key,
             'Authorization' => 'Bearer ' . $key,
@@ -48,6 +52,67 @@ class SupabaseModel
             'timeout'     => 15,
             'http_errors' => false,
         ]);
+    }
+
+    // ---- Supabase Storage (shared file hosting) --------------------------
+
+    /**
+     * Upload raw bytes to a public Supabase Storage bucket and return the
+     * public URL. Returns null on failure (caller can fall back to local).
+     * Files uploaded here are reachable from ANY device/server.
+     */
+    public function uploadToStorage(string $filename, string $bytes, string $mime, string $bucket = 'generated'): ?string
+    {
+        if ($this->projectUrl === '' || $this->serviceKey === '') {
+            return null;
+        }
+
+        $this->ensureBucket($bucket);
+
+        $path = ltrim($filename, '/');
+        $ch   = curl_init($this->projectUrl . '/storage/v1/object/' . $bucket . '/' . rawurlencode($path));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $bytes,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $this->serviceKey,
+                'apikey: ' . $this->serviceKey,
+                'Content-Type: ' . $mime,
+                'x-upsert: true',
+            ],
+        ]);
+        $resp   = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err    = curl_error($ch);
+        curl_close($ch);
+
+        if ($status >= 200 && $status < 300) {
+            return $this->projectUrl . '/storage/v1/object/public/' . $bucket . '/' . rawurlencode($path);
+        }
+
+        log_message('error', 'Supabase storage upload [' . $status . ']: ' . ($err ?: substr((string) $resp, 0, 200)));
+        return null;
+    }
+
+    /** Create a public bucket if it doesn't exist (ignores "already exists"). */
+    private function ensureBucket(string $bucket): void
+    {
+        $ch = curl_init($this->projectUrl . '/storage/v1/bucket');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode(['id' => $bucket, 'name' => $bucket, 'public' => true]),
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $this->serviceKey,
+                'apikey: ' . $this->serviceKey,
+                'Content-Type: application/json',
+            ],
+        ]);
+        curl_exec($ch);   // 200 = created, 409 = already exists — both fine
+        curl_close($ch);
     }
 
     // ---- Generic HTTP helpers --------------------------------------------
@@ -112,7 +177,6 @@ class SupabaseModel
         return $this->get('/agents', [
             'select'   => 'id,slug,name,role_title,parent_id,avatar_emoji,is_active',
             'division' => 'eq.' . $division,
-            'is_active'=> 'is.true',
             'order'    => 'created_at.asc',
         ]);
     }
@@ -163,6 +227,34 @@ class SupabaseModel
             'content'     => $content,
             'token_usage' => $usage,
         ]], ['return=minimal']);
+    }
+
+    /** Long-term conversation memory (one row per agent+session). */
+    public function getMemory(string $agentId, string $sessionId): ?array
+    {
+        $rows = $this->get('/conversation_memory', [
+            'select'     => 'summary,turns_covered',
+            'agent_id'   => 'eq.' . $agentId,
+            'session_id' => 'eq.' . $sessionId,
+            'limit'      => 1,
+        ]);
+        return $rows[0] ?? null;
+    }
+
+    /** Upsert the memory summary for an agent+session. */
+    public function saveMemory(string $agentId, string $sessionId, string $summary, int $turnsCovered): void
+    {
+        $headers = $this->headers + ['Prefer' => 'resolution=merge-duplicates,return=minimal'];
+        $this->http->post($this->baseUrl . '/conversation_memory?on_conflict=agent_id,session_id', [
+            'headers' => $headers,
+            'body'    => json_encode([[
+                'agent_id'      => $agentId,
+                'session_id'    => $sessionId,
+                'summary'       => $summary,
+                'turns_covered' => $turnsCovered,
+                'updated_at'    => date('c'),
+            ]]),
+        ]);
     }
 
     public function saveDailyReport(string $agentId, string $summary, array $raw): void

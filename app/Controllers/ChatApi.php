@@ -383,7 +383,8 @@ class ChatApi extends BaseController
         $skillRows    = $supabase->getAgentSkills($agent['id']);
         $division     = $agent['division'] ?? 'positive_nation';
         $rosterAgents = $supabase->getCompanyAgents($division);
-        $systemPrompt = $this->composeSystemPrompt($agent, $skillRows, $rosterAgents);
+        $memory       = $supabase->getMemory($agent['id'], $session);          // long-term summary
+        $systemPrompt = $this->composeSystemPrompt($agent, $skillRows, $rosterAgents, $memory['summary'] ?? '');
         $windowSize   = (int) (getenv('memory.windowTurns') ?: 12);
         $history      = $supabase->getRecentTurns($agent['id'], $session, $windowSize);
 
@@ -438,19 +439,87 @@ class ChatApi extends BaseController
         }
 
         $sse(['type' => 'done', 'session' => $session]);
+
+        // Long-term memory: fold older turns into a compact summary (runs
+        // after the reply is delivered; only refreshes occasionally).
+        $this->maybeSummarize($supabase, $agent, $session);
+
         exit;
     }
 
     // ---- helpers ----------------------------------------------------------
 
     /**
+     * Tier-2 memory: when a conversation grows past the recent window,
+     * summarize the older turns into a short "memory note" so the agent
+     * remembers the gist without re-sending thousands of tokens.
+     * Cheap: uses Haiku, and only refreshes every ~8 new turns.
+     */
+    private function maybeSummarize(SupabaseModel $sb, array $agent, string $session): void
+    {
+        $window = (int) (getenv('memory.windowTurns') ?: 12);
+
+        // Pull a generous slice of history (oldest → newest)
+        $turns = $sb->getRecentTurns($agent['id'], $session, 80);
+        $total = count($turns);
+        if ($total <= $window + 4) {
+            return; // conversation still short — nothing to summarize
+        }
+
+        // The turns that have "fallen out" of the recent window
+        $older = array_slice($turns, 0, $total - $window);
+
+        $mem     = $sb->getMemory($agent['id'], $session);
+        $covered = (int) ($mem['turns_covered'] ?? 0);
+
+        // Only refresh once ~8 new turns have rolled out of the window
+        if (count($older) - $covered < 8) {
+            return;
+        }
+
+        $transcript = '';
+        foreach ($older as $t) {
+            $transcript .= strtoupper($t['role']) . ': ' . $t['content'] . "\n";
+        }
+        $prev = $mem['summary'] ?? '';
+
+        $sysPrompt = "You compress conversation history into a concise memory note for an AI agent. "
+            . "Capture key facts, decisions, assigned tasks, names, numbers, and unresolved threads. "
+            . "Keep it under 200 words. Output ONLY the note, no preamble.";
+        $userMsg = ($prev !== '' ? "Existing memory note:\n{$prev}\n\n" : '')
+            . "Conversation to fold into the memory:\n{$transcript}\n\nProduce the updated memory note.";
+
+        try {
+            $claude  = new ClaudeService();
+            $summary = $claude->chat(
+                $sysPrompt,
+                [['role' => 'user', 'content' => $userMsg]],
+                0.3,
+                'claude-haiku-4-5-20251001' // cheap, fast model for summarization
+            );
+            $sb->saveMemory($agent['id'], $session, trim($summary['text']), count($older));
+            log_message('info', "Memory summarized for agent {$agent['id']} ({$session}): " . count($older) . ' turns');
+        } catch (\Throwable $e) {
+            log_message('warning', 'Memory summarize failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Compose the final system prompt: base role + agent roster (for delegation)
      * + any assigned skill context blocks.
      */
-    private function composeSystemPrompt(array $agent, array $skillRows, array $rosterAgents = []): string
+    private function composeSystemPrompt(array $agent, array $skillRows, array $rosterAgents = [], string $memorySummary = ''): string
     {
         $parts   = [];
         $parts[] = $agent['system_prompt'] ?? '';
+
+        // Long-term memory: gist of older messages not included in the recent window
+        if (trim($memorySummary) !== '') {
+            $parts[] = "\n\n---\n## CONVERSATION MEMORY\n"
+                . "(Summary of earlier messages in this conversation that are no longer shown in full. "
+                . "Treat it as background you already know.)\n"
+                . $memorySummary;
+        }
 
         // Inject roster so the CEO (or any director) knows exactly who to delegate to
         if (!empty($rosterAgents)) {
@@ -546,18 +615,17 @@ class ChatApi extends BaseController
     }
 
     /**
-     * One session per browser session per agent. Keeps history threading
-     * simple for the MVP — replace with auth-aware sessions later.
+     * One continuous conversation thread per agent.
+     *
+     * Previously this was tied to the PHP/browser session, so the ID reset
+     * each day (or when the browser closed) and agents appeared to "forget"
+     * past conversations — even though every turn was stored. Now it's STABLE
+     * per agent: every chat with an agent is one ongoing thread across days
+     * and devices. The Tier-2 summarizer (maybeSummarize) keeps it bounded,
+     * so an eternal thread stays cheap on tokens.
      */
     private function resolveSession(string $slug): string
     {
-        $session = session();
-        $key     = 'chat_session_' . $slug;
-        $id      = $session->get($key);
-        if (!$id) {
-            $id = bin2hex(random_bytes(8));
-            $session->set($key, $id);
-        }
-        return $id;
+        return 'main:' . $slug;
     }
 }

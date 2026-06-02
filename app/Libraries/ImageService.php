@@ -149,6 +149,15 @@ class ImageService
         if (stripos($ctype, 'png') !== false)  $ext = 'png';
         if (stripos($ctype, 'webp') !== false) $ext = 'webp';
 
+        $name = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+        // 1) Preferred: upload to Supabase Storage → URL works on ANY device
+        $cloud = (new \App\Models\SupabaseModel())->uploadToStorage($name, $body, $ctype);
+        if ($cloud) {
+            return ['ok' => true, 'url' => $cloud, 'error' => ''];
+        }
+
+        // 2) Fallback: save locally (only viewable on the machine that made it)
         $dir = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
@@ -156,14 +165,10 @@ class ImageService
         if (!is_dir($dir) || !is_writable($dir)) {
             return ['ok' => false, 'url' => '', 'error' => 'cannot write to public/generated/ (check permissions)'];
         }
-
-        $name = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
         $path = $dir . DIRECTORY_SEPARATOR . $name;
-
         if (file_put_contents($path, $body) === false) {
             return ['ok' => false, 'url' => '', 'error' => 'failed to save image file'];
         }
-
         return ['ok' => true, 'url' => '/generated/' . $name, 'error' => ''];
     }
 

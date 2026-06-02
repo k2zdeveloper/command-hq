@@ -8,7 +8,7 @@ $activeCount = count(array_filter($companies, fn($c) => $c['status'] === 'active
 
 $activeAgentsTotal = 0;
 foreach ($companies as $c) {
-    $activeAgentsTotal += count(array_filter($c['agents'], fn($a) => $a['is_active'] ?? true));
+    $activeAgentsTotal += count($c['agents']);
 }
 
 $hour    = (int) date('H');
@@ -27,6 +27,7 @@ foreach ($companies as $c) {
         'name'        => $c['name'],
         'description' => $c['description'],
         'mock'        => $c['mock'] ?? false,
+        'logo'        => $c['logo'] ?? '',
         'agents'      => array_map(fn($a) => [
             'id'        => $a['id'],
             'slug'      => $a['slug'],
@@ -44,36 +45,36 @@ foreach ($companies as $c) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0a08">
+<meta name="theme-color" content="#020617">
 <title>Command HQ · Mosbat AI</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-    /* Gold is an ACCENT only — base is a refined neutral warm-dark */
-    --c:#e8b454; --cb:#ffcf6e; --cd:#b8842c;
-    --cv:rgba(232,180,84,.10); --cg:rgba(232,180,84,.30);
-    --v:#c89050; --vv:rgba(200,144,80,.12);
-    --g:#3dd68c; --gv:rgba(61,214,140,.12);
-    --a:#e8a838;
-    --bg:#0b0a08;
-    --s:rgba(24,22,17,.86); --s2:rgba(32,29,22,.60); --s3:rgba(16,14,11,.95);
-    --b:rgba(235,225,200,.07); --bh:rgba(232,180,84,.28);
-    --t:#ece6da; --t2:#b6ad9a; --m:#80786a; --d:#2a2620;
+    /* Deep Slate & Indigo — B2B AI/SaaS palette */
+    --c:#6366f1; --cb:#818cf8; --cd:#4f46e5;
+    --cv:rgba(99,102,241,.10); --cg:rgba(99,102,241,.30);
+    --v:#4f46e5; --vv:rgba(79,70,229,.12);
+    --g:#22d3ee; --gv:rgba(34,211,238,.12);
+    --a:#6366f1;
+    --bg:#020617;
+    --s:rgba(15,23,42,.88); --s2:rgba(15,23,42,.60); --s3:rgba(2,6,23,.96);
+    --b:rgba(100,116,139,.16); --bh:rgba(99,102,241,.45);
+    --t:#f8fafc; --t2:#94a3b8; --m:#64748b; --d:#0f172a;
     color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
     background:
-        radial-gradient(ellipse 1100px 650px at 12% -8%, rgba(232,180,84,.055) 0%, transparent 55%),
-        radial-gradient(ellipse 800px 500px at 100% 108%, rgba(150,120,60,.04) 0%, transparent 50%),
+        radial-gradient(ellipse 1100px 650px at 12% -8%, rgba(99,102,241,.06) 0%, transparent 55%),
+        radial-gradient(ellipse 800px 500px at 100% 108%, rgba(34,211,238,.03) 0%, transparent 50%),
         var(--bg);
     min-height:100vh;color:var(--t);}
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     background-image:
-        linear-gradient(rgba(235,225,200,.02) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(235,225,200,.02) 1px,transparent 1px);
+        linear-gradient(rgba(100,116,139,.04) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(100,116,139,.04) 1px,transparent 1px);
     background-size:44px 44px;}
 .circuit-bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55;}
 .gear{position:fixed;z-index:0;pointer-events:none;color:var(--c);opacity:.06;}
@@ -87,28 +88,28 @@ header,main,footer,.modal-wrap{position:relative;z-index:1;}
 .glass2{background:var(--s2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--b);}
 .glass3{background:var(--s3);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--b);}
 
-/* Gradient text — gold reserved for emphasis */
-.gt{background:linear-gradient(90deg,#ffcf6e,#e8b454,#b8842c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.gtg{background:linear-gradient(90deg,#3dd68c,#1f9e62);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.gtv{background:linear-gradient(90deg,#d8a860,#b8842c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.gta{background:linear-gradient(90deg,#ffcf6e,#e8a838);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+/* Gradient text — indigo/cyan palette */
+.gt{background:linear-gradient(90deg,#818cf8,#6366f1,#4f46e5);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.gtg{background:linear-gradient(90deg,#22d3ee,#0ea5e9);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.gtv{background:linear-gradient(90deg,#818cf8,#6366f1);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.gta{background:linear-gradient(90deg,#818cf8,#6366f1);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 
 .hex{clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);}
 
 /* Status dots */
-.dot-c{width:6px;height:6px;border-radius:9999px;background:var(--c);flex-shrink:0;box-shadow:0 0 0 0 rgba(232,180,84,.6);animation:pC 2.4s cubic-bezier(.4,0,.6,1) infinite;}
-.dot-g{width:6px;height:6px;border-radius:9999px;background:var(--g);flex-shrink:0;box-shadow:0 0 0 0 rgba(61,214,140,.6);animation:pG 2.6s cubic-bezier(.4,0,.6,1) infinite;}
+.dot-c{width:6px;height:6px;border-radius:9999px;background:var(--c);flex-shrink:0;box-shadow:0 0 0 0 rgba(99,102,241,.6);animation:pC 2.4s cubic-bezier(.4,0,.6,1) infinite;}
+.dot-g{width:6px;height:6px;border-radius:9999px;background:var(--g);flex-shrink:0;box-shadow:0 0 0 0 rgba(34,211,238,.6);animation:pG 2.6s cubic-bezier(.4,0,.6,1) infinite;}
 .dot-m{width:6px;height:6px;border-radius:9999px;background:var(--m);flex-shrink:0;}
-@keyframes pC{0%{box-shadow:0 0 0 0 rgba(232,180,84,.55);}70%{box-shadow:0 0 0 7px rgba(232,180,84,0);}100%{box-shadow:0 0 0 0 rgba(232,180,84,0);}}
-@keyframes pG{0%{box-shadow:0 0 0 0 rgba(61,214,140,.55);}70%{box-shadow:0 0 0 7px rgba(61,214,140,0);}100%{box-shadow:0 0 0 0 rgba(61,214,140,0);}}
+@keyframes pC{0%{box-shadow:0 0 0 0 rgba(99,102,241,.55);}70%{box-shadow:0 0 0 7px rgba(99,102,241,0);}100%{box-shadow:0 0 0 0 rgba(99,102,241,0);}}
+@keyframes pG{0%{box-shadow:0 0 0 0 rgba(34,211,238,.55);}70%{box-shadow:0 0 0 7px rgba(34,211,238,0);}100%{box-shadow:0 0 0 0 rgba(34,211,238,0);}}
 
 /* Section label */
 .sl{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--m);}
-.sl::before{content:'//';color:var(--c);opacity:.45;margin-right:2px;}
+.sl::before{content:'//';color:var(--c);opacity:.55;margin-right:2px;}
 .sl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--b),transparent);}
 
-/* Logo — dark box, gold brain accent */
-.logo{width:38px;height:38px;border-radius:10px;background:radial-gradient(circle at 50% 36%,rgba(232,180,84,.18),rgba(16,14,11,.7));border:1px solid rgba(232,180,84,.30);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px -5px rgba(232,180,84,.4);}
+/* Logo — dark box, indigo brain accent */
+.logo{width:38px;height:38px;border-radius:10px;background:radial-gradient(circle at 50% 36%,rgba(99,102,241,.18),rgba(2,6,23,.8));border:1px solid rgba(99,102,241,.30);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px -5px rgba(99,102,241,.35);}
 
 /* Metric tile */
 .tile{position:relative;overflow:hidden;border-radius:16px;padding:1.1rem 1.2rem;background:var(--s);border:1px solid var(--b);transition:border-color .2s,transform .2s;}
@@ -119,8 +120,8 @@ header,main,footer,.modal-wrap{position:relative;z-index:1;}
 
 /* Company card */
 .co{position:relative;transition:border-color .2s,box-shadow .2s,transform .2s;border:1px solid var(--b);}
-.co::before{content:'';position:absolute;top:0;left:1.25rem;right:1.25rem;height:1.5px;background:linear-gradient(90deg,transparent,var(--c) 50%,transparent);opacity:.5;}
-.co:hover{border-color:var(--bh)!important;box-shadow:0 8px 36px -12px rgba(232,180,84,.20);transform:translateY(-2px);}
+.co::before{content:'';position:absolute;top:0;left:1.25rem;right:1.25rem;height:1.5px;background:linear-gradient(90deg,transparent,var(--c) 50%,transparent);opacity:.45;}
+.co:hover{border-color:var(--bh)!important;box-shadow:0 8px 36px -12px rgba(99,102,241,.22);transform:translateY(-2px);}
 
 /* Tab bar */
 .tab-btn{position:relative;padding:.5rem 1rem;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--m);transition:color .15s;background:none;border:none;cursor:pointer;}
@@ -129,26 +130,27 @@ header,main,footer,.modal-wrap{position:relative;z-index:1;}
 .tab-btn:hover:not(.active){color:var(--t);}
 
 .sk-row{display:flex;align-items:start;gap:10px;padding:.75rem;border-radius:10px;border:1px solid var(--b);background:var(--s2);transition:border-color .15s;}
-.sk-row:hover{border-color:rgba(200,144,80,.25);}
+.sk-row:hover{border-color:rgba(99,102,241,.30);}
 
 /* Inputs */
-.inp{background:rgba(14,12,9,.8);border:1px solid var(--b);color:var(--t);border-radius:10px;padding:.5rem .75rem;font-size:.875rem;width:100%;transition:border-color .15s;font-family:'Inter',sans-serif;}
+.inp{background:rgba(2,6,23,.8);border:1px solid var(--b);color:var(--t);border-radius:10px;padding:.5rem .75rem;font-size:.875rem;width:100%;transition:border-color .15s;font-family:'Inter',sans-serif;}
 .inp:focus{outline:none;border-color:var(--bh);}
 .inp::placeholder{color:var(--m);}
-select.inp option{background:#16140f;}
+#qc-msg::placeholder{color:var(--m);opacity:.35;}
+select.inp option{background:#0f172a;}
 textarea.inp{resize:vertical;min-height:70px;}
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border-radius:8px;font-size:.75rem;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border:none;transition:all .15s;}
-.btn-cyan{background:linear-gradient(135deg,#e8b454,#b8842c);color:#1a1206;font-weight:600;}
-.btn-cyan:hover{filter:brightness(1.1);}
+.btn-cyan{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#ffffff;font-weight:600;}
+.btn-cyan:hover{filter:brightness(1.12);}
 .btn-ghost{background:transparent;border:1px solid var(--b);color:var(--c);}
 .btn-ghost:hover{background:var(--cv);border-color:var(--bh);}
-.btn-violet{background:rgba(200,144,80,.14);border:1px solid rgba(200,144,80,.25);color:#d8a860;}
-.btn-violet:hover{background:rgba(200,144,80,.24);}
-.btn-danger{background:rgba(229,80,80,.12);border:1px solid rgba(229,80,80,.2);color:#f08a8a;}
-.btn-danger:hover{background:rgba(229,80,80,.22);}
-.btn-green{background:rgba(61,214,140,.12);border:1px solid rgba(61,214,140,.22);color:var(--g);}
+.btn-violet{background:rgba(99,102,241,.14);border:1px solid rgba(99,102,241,.28);color:#818cf8;}
+.btn-violet:hover{background:rgba(99,102,241,.24);}
+.btn-danger{background:rgba(248,113,113,.10);border:1px solid rgba(248,113,113,.22);color:#fca5a5;}
+.btn-danger:hover{background:rgba(248,113,113,.20);}
+.btn-green{background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.22);color:var(--g);}
 .btn-sm{padding:.3rem .7rem;font-size:10px;}
 
 /* Modal */
@@ -159,7 +161,7 @@ textarea.inp{resize:vertical;min-height:70px;}
 
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:rgba(232,180,84,.18);border-radius:5px;}
+::-webkit-scrollbar-thumb{background:rgba(99,102,241,.25);border-radius:5px;}
 .hidden{display:none!important;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
@@ -168,28 +170,28 @@ textarea.inp{resize:vertical;min-height:70px;}
 .orgchart ul{display:flex;justify-content:center;padding-top:24px;position:relative;list-style:none;margin:0;}
 .orgchart li{list-style:none;position:relative;padding:24px 12px 0;}
 /* connector: up-line + across-line */
-.orgchart li::before,.orgchart li::after{content:'';position:absolute;top:0;right:50%;border-top:1.5px solid rgba(232,180,84,.28);width:50%;height:24px;}
-.orgchart li::after{right:auto;left:50%;border-left:1.5px solid rgba(232,180,84,.28);}
+.orgchart li::before,.orgchart li::after{content:'';position:absolute;top:0;right:50%;border-top:1.5px solid rgba(99,102,241,.30);width:50%;height:24px;}
+.orgchart li::after{right:auto;left:50%;border-left:1.5px solid rgba(99,102,241,.30);}
 .orgchart li:only-child::after,.orgchart li:only-child::before{display:none;}
 .orgchart li:only-child{padding-top:24px;}
 .orgchart li:first-child::before,.orgchart li:last-child::after{border:0 none;}
-.orgchart li:last-child::before{border-right:1.5px solid rgba(232,180,84,.28);border-radius:0 7px 0 0;}
+.orgchart li:last-child::before{border-right:1.5px solid rgba(99,102,241,.30);border-radius:0 7px 0 0;}
 .orgchart li:first-child::after{border-radius:7px 0 0 0;}
-.orgchart ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:1.5px solid rgba(232,180,84,.28);width:0;height:24px;}
+.orgchart ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:1.5px solid rgba(99,102,241,.30);width:0;height:24px;}
 .orgchart > ul{padding-top:0;}
 .orgchart > ul > li{padding-top:0;}
 .orgchart li.collapsed > ul{display:none;}
 /* node card */
 .ocard{position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:5px;min-width:128px;max-width:180px;padding:.8rem .85rem .7rem;border-radius:14px;border:1px solid var(--b);background:var(--s);transition:border-color .15s,transform .15s,box-shadow .15s;text-decoration:none;vertical-align:top;}
-.ocard::before{content:'';position:absolute;top:0;left:18px;right:18px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.55;}
-.ocard:hover{border-color:var(--bh);transform:translateY(-2px);box-shadow:0 8px 26px -10px rgba(232,180,84,.25);}
-.ocard.is-chairman{border-color:rgba(232,180,84,.4);background:linear-gradient(160deg,rgba(232,180,84,.14),rgba(24,22,17,.85));}
-.ocard.is-company{cursor:pointer;border-color:rgba(232,180,84,.22);}
+.ocard::before{content:'';position:absolute;top:0;left:18px;right:18px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.5;}
+.ocard:hover{border-color:var(--bh);transform:translateY(-2px);box-shadow:0 8px 26px -10px rgba(99,102,241,.28);}
+.ocard.is-chairman{border-color:rgba(99,102,241,.45);background:linear-gradient(160deg,rgba(99,102,241,.12),rgba(15,23,42,.90));}
+.ocard.is-company{cursor:pointer;border-color:rgba(99,102,241,.25);}
 .ocard .oav{display:grid;place-items:center;font-weight:700;flex-shrink:0;}
 .ocard .onm{font-size:.8rem;font-weight:600;color:var(--t);line-height:1.2;text-align:center;}
 .ocard .orl{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--m);text-align:center;line-height:1.2;}
-.octog{display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:2px 9px;border-radius:99px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.05em;background:rgba(232,180,84,.1);border:1px solid rgba(232,180,84,.25);color:var(--c);cursor:pointer;transition:all .15s;}
-.octog:hover{background:rgba(232,180,84,.2);}
+.octog{display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:2px 9px;border-radius:99px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.05em;background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.28);color:var(--c);cursor:pointer;transition:all .15s;}
+.octog:hover{background:rgba(99,102,241,.20);}
 .octog .chev{transition:transform .2s;display:inline-block;}
 li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 
@@ -213,7 +215,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 <svg class="circuit-bg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <defs>
     <pattern id="pcb" width="180" height="180" patternUnits="userSpaceOnUse">
-      <g stroke="#e8b454" stroke-opacity="0.07" stroke-width="1" fill="none" stroke-linecap="round">
+      <g stroke="#6366f1" stroke-opacity="0.08" stroke-width="1" fill="none" stroke-linecap="round">
         <path d="M0 34 H44 M44 34 V78 M44 78 H96"/>
         <path d="M180 56 H132 V120 H78"/>
         <path d="M92 0 V40 M92 40 L122 70"/>
@@ -221,18 +223,18 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
         <path d="M150 180 V146 H180"/>
         <path d="M0 150 H30 V120"/>
       </g>
-      <g fill="#e8b454" fill-opacity="0.11">
+      <g fill="#6366f1" fill-opacity="0.14">
         <circle cx="44" cy="34" r="2.4"/><circle cx="96" cy="78" r="2.4"/>
         <circle cx="132" cy="56" r="2.4"/><circle cx="78" cy="120" r="2.4"/>
         <circle cx="92" cy="40" r="2.4"/><circle cx="122" cy="70" r="2.4"/>
         <circle cx="66" cy="134" r="2.4"/><circle cx="150" cy="146" r="2.4"/>
         <circle cx="30" cy="120" r="2.4"/>
       </g>
-      <g stroke="#e8b454" stroke-opacity="0.05" fill="none">
+      <g stroke="#6366f1" stroke-opacity="0.07" fill="none">
         <rect x="106" y="22" width="16" height="9" rx="1"/>
         <rect x="14" y="92" width="9" height="16" rx="1"/>
       </g>
-      <g stroke="#e8b454" stroke-opacity="0.055" fill="none">
+      <g stroke="#6366f1" stroke-opacity="0.07" fill="none">
         <path d="M148 86 l14 8.1 v16.2 l-14 8.1 l-14 -8.1 v-16.2 z"/>
         <path d="M34 30 l9 5.2 v10.4 l-9 5.2 l-9 -5.2 v-10.4 z"/>
       </g>
@@ -368,10 +370,16 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 
     <!-- Welcome / Chairman -->
     <div class="glass rounded-2xl p-6 flex items-center gap-4 relative overflow-hidden">
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 300px 180px at 0% 0%,rgba(232,180,84,.08),transparent 70%);pointer-events:none;"></div>
-        <div class="hex flex-shrink-0 grid place-items-center font-bold text-xl gt relative" style="width:60px;height:68px;background:linear-gradient(135deg,rgba(232,180,84,.2),rgba(184,132,44,.12));"><?= esc($chairman['initials']) ?></div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 300px 180px at 0% 0%,rgba(99,102,241,.10),transparent 70%);pointer-events:none;"></div>
+        <?php if (!empty($chairman['logo'])): ?>
+        <div class="flex-shrink-0 relative" style="width:60px;height:60px;">
+            <img src="<?= esc($chairman['logo']) ?>" width="60" height="60" alt="<?= esc($chairman['name']) ?>" style="display:block;width:60px;height:60px;object-fit:contain;">
+        </div>
+        <?php else: ?>
+        <div class="hex flex-shrink-0 grid place-items-center font-bold text-xl gt relative" style="width:60px;height:68px;background:linear-gradient(135deg,rgba(99,102,241,.22),rgba(79,70,229,.12));"><?= esc($chairman['initials']) ?></div>
+        <?php endif; ?>
         <div class="relative">
-            <div class="mono text-[9px] tracking-[.2em] uppercase mb-1" style="color:var(--m);"><?= $greeting ?></div>
+            <div id="greeting-label" class="mono text-[9px] tracking-[.2em] uppercase mb-1" style="color:var(--m);"><?= $greeting ?></div>
             <h1 class="text-xl font-bold tracking-tight" style="color:var(--t);">Chairman <?= esc($chairman['name']) ?></h1>
             <div class="text-sm mt-0.5" style="color:var(--t2);"><?= esc($chairman['title']) ?></div>
         </div>
@@ -380,18 +388,18 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
     <!-- Metric tiles -->
     <div class="grid grid-cols-3 gap-4">
         <div class="tile">
-            <svg class="tile-ico" width="20" height="20" style="color:var(--c);"><use href="#i-building"/></svg>
-            <div class="tile-val gt"><?= $activeCount ?></div>
+            <svg class="tile-ico" width="20" height="20" style="color:#ffffff;opacity:0.35;"><use href="#i-building"/></svg>
+            <div class="tile-val" style="color:#ffffff;"><?= $activeCount ?></div>
             <div class="tile-lbl">Companies</div>
         </div>
         <div class="tile">
-            <svg class="tile-ico" width="20" height="20" style="color:var(--c);"><use href="#i-bot"/></svg>
-            <div class="tile-val" style="color:var(--t);"><?= $totalAgents ?></div>
+            <svg class="tile-ico" width="20" height="20" style="color:#2090e8;opacity:0.35;"><use href="#i-bot"/></svg>
+            <div class="tile-val" style="color:#ffffff;"><?= $totalAgents ?></div>
             <div class="tile-lbl">Total Agents</div>
         </div>
         <div class="tile">
             <svg class="tile-ico" width="20" height="20" style="color:var(--g);"><use href="#i-activity"/></svg>
-            <div class="tile-val gtg"><?= $activeAgentsTotal ?></div>
+            <div class="tile-val" style="color:#22d3ee;"><?= $activeAgentsTotal ?></div>
             <div class="tile-lbl">Active Agents</div>
         </div>
     </div>
@@ -404,7 +412,6 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
             <svg width="15" height="15" style="color:var(--c);flex-shrink:0;"><use href="#i-zap"/></svg>
             <div>
                 <span class="font-semibold text-sm" style="color:var(--t);">Quick Command</span>
-                <span class="mono text-[9px] ml-2" style="color:var(--m);">Issue a directive to any company without leaving HQ</span>
             </div>
         </div>
         <div id="qc-status" class="hidden items-center gap-1.5 mono text-[9px]" style="color:var(--m);">
@@ -414,6 +421,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
     <div class="p-4 space-y-3">
         <div class="flex gap-3 qc-row">
             <select id="qc-co" class="inp" style="max-width:230px;font-size:.82rem;">
+                <option value="" disabled selected>Select a company</option>
                 <?php foreach ($coData as $co): if (!$co['root_slug']) continue; ?>
                 <option value="<?= esc($co['root_slug']) ?>" data-mock="<?= $co['mock'] ? '1' : '0' ?>"><?= esc($co['name']) ?><?= $co['mock'] ? ' (Demo)' : '' ?></option>
                 <?php endforeach; ?>
@@ -437,20 +445,26 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
     <div class="grid sm:grid-cols-2 gap-4">
         <?php foreach ($companies as $company): ?>
         <?php $isMock = $company['mock'] ?? false; ?>
-        <?php $activeAgents = count(array_filter($company['agents'], fn($a) => $a['is_active'] ?? true)); ?>
+        <?php $activeAgents = count($company['agents']); ?>
         <a href="/company/<?= esc($company['id']) ?>" class="co glass rounded-2xl overflow-hidden block" style="text-decoration:none;">
             <div class="p-5">
                 <div class="flex items-start gap-3">
-                    <div class="hex flex-shrink-0 grid place-items-center" style="width:42px;height:48px;background:linear-gradient(135deg,rgba(232,180,84,.18),rgba(184,132,44,.10));">
+                    <?php if (!empty($company['logo'])): ?>
+                    <div class="flex-shrink-0 grid place-items-center overflow-hidden" style="width:42px;height:42px;border-radius:10px;">
+                        <img src="<?= esc($company['logo']) ?>" width="42" height="42" alt="<?= esc($company['name']) ?>" style="display:block;width:42px;height:42px;border-radius:10px;">
+                    </div>
+                    <?php else: ?>
+                    <div class="hex flex-shrink-0 grid place-items-center" style="width:42px;height:48px;background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(79,70,229,.10));">
                         <svg width="18" height="18" style="color:var(--c);"><use href="#i-building"/></svg>
                     </div>
+                    <?php endif; ?>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap mb-0.5">
                             <span class="font-semibold text-sm" style="color:var(--t);"><?= esc($company['name']) ?></span>
                             <?php if ($isMock): ?>
-                            <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded gta" style="background:rgba(232,168,56,.07);border:1px solid rgba(232,168,56,.18);">Demo</span>
+                            <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.22);color:#818cf8;">Demo</span>
                             <?php else: ?>
-                            <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded gtg" style="background:rgba(61,214,140,.07);border:1px solid rgba(61,214,140,.18);">Live</span>
+                            <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded gtg" style="background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.20);">Live</span>
                             <?php endif; ?>
                         </div>
                         <p class="text-xs" style="color:var(--m);line-height:1.5;"><?= esc($company['description']) ?></p>
@@ -492,7 +506,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 
 <script>
 const COMPANIES = <?= json_encode(array_values($coData)) ?>;
-const CHAIRMAN  = <?= json_encode(['name'=>$chairman['name'],'title'=>$chairman['title'],'initials'=>$chairman['initials']]) ?>;
+const CHAIRMAN  = <?= json_encode(['name'=>$chairman['name'],'title'=>$chairman['title'],'initials'=>$chairman['initials'],'logo'=>$chairman['logo']??'']) ?>;
 
 let settingsTab = 'skills';
 let allSettingsSkills = [];
@@ -511,7 +525,7 @@ function renderHQOrg(){
     function agentNode(a){
         const dot = (a.is_active!==false) ? 'dot-g' : 'dot-m';
         return '<div class="ocard">'
-            + '<div class="oav hex" style="width:30px;height:34px;font-size:.6rem;background:linear-gradient(135deg,rgba(232,180,84,.2),rgba(184,132,44,.13));color:var(--c);">'+ini(a.name)+'</div>'
+            + '<div class="oav hex" style="width:30px;height:34px;font-size:.6rem;background:linear-gradient(135deg,rgba(99,102,241,.20),rgba(79,70,229,.12));color:var(--c);">'+ini(a.name)+'</div>'
             + '<div class="flex items-center gap-1.5"><div class="'+dot+'" style="width:5px;height:5px;"></div><span class="onm">'+h(a.name)+'</span></div>'
             + '<div class="orl">'+h(a.role_title||'')+'</div></div>';
     }
@@ -531,19 +545,24 @@ function renderHQOrg(){
     // Chairman → companies (companies collapsed by default)
     let companies = COMPANIES.map(co=>{
         const total = (co.agents||[]).length;
-        const active = (co.agents||[]).filter(a=>a.is_active!==false).length;
+        const active = (co.agents||[]).length;
+        const coAvatar = co.logo
+            ? '<img src="'+co.logo+'" width="36" height="36" alt="'+h(co.name)+'" style="display:block;width:36px;height:36px;object-fit:contain;border-radius:8px;">'
+            : '<div class="oav hex" style="width:32px;height:36px;background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(79,70,229,.10));"><svg width="15" height="15" style="color:var(--c);"><use href="#i-building"/></svg></div>';
         const card = '<div class="ocard is-company">'
-            + '<div class="oav hex" style="width:32px;height:36px;background:linear-gradient(135deg,rgba(232,180,84,.18),rgba(184,132,44,.1));"><svg width="15" height="15" style="color:var(--c);"><use href="#i-building"/></svg></div>'
+            + coAvatar
             + '<a href="/company/'+encodeURIComponent(co.id)+'" class="onm" style="text-decoration:none;">'+h(co.name)+'</a>'
             + '<div class="orl">'+active+' / '+total+' active</div>'
-            + (total>0 ? '<span class="octog" onclick="toggleOrg(this)"><span class="chev">▾</span> '+total+' agents</span>' : '')
+            + (total>0 ? '<span class="octog" onclick="toggleOrg(this)" style="color:#22d3ee;"><span class="chev">▾</span> '+total+' agents</span>' : '')
             + '</div>';
-        // collapsed by default so agents are hidden until clicked
         return '<li class="collapsed">'+card+companyAgentTree(co.agents)+'</li>';
     }).join('');
 
+    const chairmanAvatar = CHAIRMAN.logo
+        ? '<img src="'+CHAIRMAN.logo+'" width="38" height="38" alt="'+h(CHAIRMAN.name)+'" style="display:block;width:38px;height:38px;object-fit:contain;">'
+        : '<div class="oav hex gt" style="width:34px;height:39px;font-size:.78rem;background:linear-gradient(135deg,rgba(99,102,241,.22),rgba(79,70,229,.14));">'+h(CHAIRMAN.initials)+'</div>';
     const chairman = '<div class="ocard is-chairman">'
-        + '<div class="oav hex gt" style="width:34px;height:39px;font-size:.78rem;background:linear-gradient(135deg,rgba(232,180,84,.22),rgba(184,132,44,.16));">'+h(CHAIRMAN.initials)+'</div>'
+        + chairmanAvatar
         + '<div class="onm">'+h(CHAIRMAN.name)+'</div>'
         + '<div class="orl">'+h(CHAIRMAN.title)+'</div></div>';
 
@@ -732,6 +751,18 @@ async function quickSend(){
     btn.disabled=false;
     statusEl.classList.add('hidden'); statusEl.classList.remove('flex');
 }
+</script>
+<script>
+(function(){
+    function updateGreeting(){
+        var h = new Date().getHours();
+        var label = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+        var el = document.getElementById('greeting-label');
+        if(el) el.textContent = label;
+    }
+    updateGreeting();
+    setInterval(updateGreeting, 60000);
+})();
 </script>
 </body>
 </html>
