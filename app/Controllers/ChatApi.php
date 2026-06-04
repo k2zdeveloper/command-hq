@@ -426,8 +426,8 @@ class ChatApi extends BaseController
             exit;
         }
 
-        $supabase->saveTurn($agent['id'], $session, 'user', $message);
-        $supabase->saveTurn($agent['id'], $session, 'assistant', $result['text'], $result['usage']);
+        $assistantText = $result['text'];
+        $finalUsage    = $result['usage'];
 
         // ── Execute any tool calls found in the response ─────────────────
         $dispatcher = new ToolDispatcher($division, $agent['id']);
@@ -435,8 +435,41 @@ class ChatApi extends BaseController
             $toolResults = $dispatcher->executeAll($result['text']);
             if ($toolResults) {
                 $sse(['type' => 'tool_result', 'results' => $toolResults]);
+
+                // ── Synthesis pass ───────────────────────────────────────
+                // Feed the REAL tool results back so the agent's report
+                // reflects what was actually measured (not what it predicted
+                // before the tools ran). One round only — tool blocks in this
+                // second response are NOT re-executed, preventing loops. The
+                // system prompt is byte-identical, so this pass hits the cache.
+                $followup   = $messages;
+                $followup[] = ['role' => 'assistant', 'content' => $result['text']];
+                $followup[] = ['role' => 'user',      'content' => $toolResults];
+
+                $sse(['type' => 'chunk', 'text' => "\n\n"]);
+                try {
+                    $synth = $claude->chatStream(
+                        $systemPrompt,
+                        $followup,
+                        (float) ($agent['temperature'] ?? 0.7),
+                        $agent['model'] ?? null,
+                        function (string $chunk) use ($sse): void {
+                            $sse(['type' => 'chunk', 'text' => $chunk]);
+                        }
+                    );
+                    if (trim($synth['text']) !== '') {
+                        $assistantText = trim($result['text']) . "\n\n" . trim($synth['text']);
+                        $finalUsage    = $synth['usage'];
+                    }
+                } catch (\Throwable $e) {
+                    log_message('warning', 'Synthesis pass failed: ' . $e->getMessage());
+                }
             }
         }
+
+        // Persist as a single assistant turn (keeps user/assistant alternation).
+        $supabase->saveTurn($agent['id'], $session, 'user', $message);
+        $supabase->saveTurn($agent['id'], $session, 'assistant', $assistantText, $finalUsage);
 
         $sse(['type' => 'done', 'session' => $session]);
 
@@ -542,7 +575,7 @@ class ChatApi extends BaseController
         $parts[] = "\n\n---\n## RESPONSE STYLE — BE BRIEF\n"
             . "- Lead with the answer or action in ONE short line. No long preambles or strategic commentary.\n"
             . "- Keep replies scannable: 3-6 short bullets max. Avoid walls of text and big tables unless explicitly asked.\n"
-            . "- When you use a tool, write 1 line before it, then let the tool result speak. Don't restate it after.\n"
+            . "- When you call a tool, output ONLY a one-line intro and the tool block — do NOT write results, tables, or a report yet. You will receive the REAL tool results and then write your report from them. Never invent or predict tool output.\n"
             . "- To hire: confirm the role in ONE line, then call [HIRE_AGENT]. Do NOT write a full job description, salary, or interview questions unless the user explicitly asks for a 'hiring package'.\n"
             . "- Never repeat information already shown. Finish your tool calls — never leave one half-written.";
 
@@ -588,6 +621,20 @@ class ChatApi extends BaseController
             . "[SEARCH]\n"
             . "query: what you want to search\n"
             . "[/SEARCH]\n\n"
+            . "### Check Site — live website QA (you CAN visit real pages)\n"
+            . "Visit REAL pages and get verifiable facts: HTTP status, load time, HTTPS/SSL, redirects, "
+            . "title, forms present, and a 404 scan. Add `scope: site` to discover and check EVERY page via "
+            . "sitemap.xml. Never submits form data. After results come back, write a SIMPLE report "
+            . "(🟢/🟡/🔴 then issues).\n"
+            . "[CHECK_SITE]\n"
+            . "url: https://example.com\n"
+            . "scope: site\n"
+            . "[/CHECK_SITE]\n"
+            . "READING RESULTS — avoid false alarms: a form action of '#'/empty/JavaScript is NORMAL "
+            . "(JS/AJAX submit), NOT a broken form. A 404/405 GET-probe on a form action is often normal "
+            . "(POST-only). Only call something broken if the PAGE returns 4xx/5xx. JS-rendered sites may "
+            . "show 'no forms/links in static HTML' — that's a static-check limitation, not a defect. "
+            . "Report ONLY what the tool returned; never invent statuses or numbers.\n\n"
             . "### Assign Task to a Specific Agent\n"
             . "[CREATE_TASK]\n"
             . "agent: Agent Name\n"

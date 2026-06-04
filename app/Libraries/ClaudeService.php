@@ -53,13 +53,23 @@ class ClaudeService
         float   $temperature = 0.7,
         ?string $modelOverride = null
     ): array {
+        $model   = $modelOverride ?: $this->model;
         $payload = json_encode([
-            'model'       => $modelOverride ?: $this->model,
-            'max_tokens'  => $this->maxTokens,
-            'temperature' => $temperature,
-            'system'      => $systemPrompt,
-            'messages'    => $messages,
-        ]);
+            'model'      => $model,
+            'max_tokens' => $this->maxTokens,
+            // System prompt sent as a cacheable block. It's large (role +
+            // roster + skills + tool docs) and byte-stable across turns of a
+            // conversation, so Anthropic prompt caching serves it at ~0.1×
+            // input cost on every follow-up turn within the 5-min TTL.
+            'system'     => [[
+                'type'          => 'text',
+                'text'          => $systemPrompt,
+                'cache_control' => ['type' => 'ephemeral'],
+            ]],
+            'messages'   => $messages,
+            // temperature is only included for models that still accept it —
+            // Opus 4.7+ removed sampling params and 400 if they're sent.
+        ] + $this->samplingParams($model, $temperature));
 
         $ch = curl_init($this->endpoint);
         curl_setopt_array($ch, [
@@ -125,14 +135,19 @@ class ClaudeService
         ?callable $onChunk = null,
         ?callable $shouldAbort = null
     ): array {
+        $model   = $modelOverride ?: $this->model;
         $payload = json_encode([
-            'model'       => $modelOverride ?: $this->model,
-            'max_tokens'  => $this->maxTokens,
-            'temperature' => $temperature,
-            'system'      => $systemPrompt,
-            'messages'    => $messages,
-            'stream'      => true,
-        ]);
+            'model'      => $model,
+            'max_tokens' => $this->maxTokens,
+            // Cacheable system block — see chat() for rationale.
+            'system'     => [[
+                'type'          => 'text',
+                'text'          => $systemPrompt,
+                'cache_control' => ['type' => 'ephemeral'],
+            ]],
+            'messages'   => $messages,
+            'stream'     => true,
+        ] + $this->samplingParams($model, $temperature));
 
         $buffer    = '';
         $fullText  = '';
@@ -211,6 +226,24 @@ class ClaudeService
         }
 
         return ['text' => trim($fullText), 'usage' => $usage];
+    }
+
+    /**
+     * Build the sampling-parameter slice of the payload.
+     *
+     * Opus 4.7 and later removed `temperature`/`top_p`/`top_k` — sending any of
+     * them returns a 400. Everything else (Sonnet 4.6, Haiku 4.5, Opus 4.6 and
+     * older) still accepts `temperature`. So we omit it only for the models that
+     * reject it, and steer those purely via the system prompt.
+     *
+     * @return array{temperature?: float}
+     */
+    private function samplingParams(string $model, float $temperature): array
+    {
+        if (preg_match('/opus-4-(?:[7-9]|\d{2,})/', $model)) {
+            return []; // Opus 4.7+ — no sampling params allowed
+        }
+        return ['temperature' => $temperature];
     }
 
     /**

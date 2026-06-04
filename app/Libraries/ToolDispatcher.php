@@ -36,18 +36,20 @@ use App\Models\SupabaseModel;
  */
 class ToolDispatcher
 {
-    private SearchService $search;
-    private EmailService  $email;
-    private ImageService  $image;
-    private SupabaseModel $supabase;
-    private string        $companyId;
-    private ?string       $agentId;
+    private SearchService    $search;
+    private EmailService     $email;
+    private ImageService     $image;
+    private SiteCheckService $siteCheck;
+    private SupabaseModel    $supabase;
+    private string           $companyId;
+    private ?string          $agentId;
 
     public function __construct(string $companyId = '', ?string $agentId = null)
     {
         $this->search    = new SearchService();
         $this->email     = new EmailService();
         $this->image     = new ImageService();
+        $this->siteCheck = new SiteCheckService();
         $this->supabase  = new SupabaseModel();
         $this->companyId = $companyId;
         $this->agentId   = $agentId;
@@ -76,7 +78,7 @@ class ToolDispatcher
      */
     public function hasTools(string $text): bool
     {
-        return (bool) preg_match('/\[(SEARCH|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|HIRE_AGENT|FIRE_AGENT)\]/i', $text);
+        return (bool) preg_match('/\[(SEARCH|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|HIRE_AGENT|FIRE_AGENT|CHECK_SITE)\]/i', $text);
     }
 
     /**
@@ -97,6 +99,22 @@ class ToolDispatcher
                 log_message('info', "ToolDispatcher: SEARCH — {$query}");
                 $result    = $this->search->search($query);
                 $results[] = $this->wrapResult('SEARCH', "Query: {$query}\n\n{$result}");
+            }
+        }
+
+        // ── [CHECK_SITE] ... [/CHECK_SITE] ───────────────────────────
+        if (preg_match_all('/\[CHECK_SITE\](.*?)\[\/CHECK_SITE\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $url = $this->field($block, 'url');
+                if (empty($url)) {
+                    $results[] = $this->wrapResult('CHECK_SITE', '⚠ Skipped — "url" is required.');
+                    continue;
+                }
+                // scope: "site" → discover & check every page via sitemap.xml.
+                $scope = strtolower((string) ($this->field($block, 'scope') ?? 'page'));
+                log_message('info', "ToolDispatcher: CHECK_SITE — {$url} (scope={$scope})");
+                $result    = $this->siteCheck->check($url, $scope);
+                $results[] = $this->wrapResult('CHECK_SITE', $result);
             }
         }
 
@@ -455,6 +473,26 @@ Search Google for current information, research, pricing, news, contacts.
 [SEARCH]
 query: your search query here
 [/SEARCH]
+
+### 🩺 Check Site (live website QA)
+Visit a REAL web page and get verifiable health facts: HTTP status, load time,
+HTTPS/SSL validity, redirects, page title, forms present, and a 404 scan.
+Add `scope: site` to discover EVERY page via sitemap.xml and check each one.
+It never submits form data.
+
+[CHECK_SITE]
+url: https://example.com
+scope: site
+[/CHECK_SITE]
+
+IMPORTANT — how to read the results, so you don't raise false alarms:
+- A form action of "#"/empty/JavaScript is NORMAL (the form submits via JS/AJAX).
+  Do NOT report it as a broken form or a 404.
+- A GET probe returning 404/405 on a form action is often normal (POST-only
+  endpoint). Only call something broken if the PAGE itself returns 4xx/5xx.
+- JS-rendered sites (Wix, React) may show "no forms/links in static HTML" — that
+  is a limitation of static checking, not a site defect. Use scope: site for pages.
+- Report ONLY what the tool actually returned. Never invent statuses or numbers.
 
 ### 📧 Send Email
 Send an actual email to any address. Useful for reports, notifications, outreach.
