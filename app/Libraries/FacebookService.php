@@ -136,53 +136,84 @@ class FacebookService
     }
 
     /**
-     * Read basic Page insights for the daily board report.
-     * Returns follower count + the engagement of recent posts.
-     * Requires a Page Access Token with `read_insights` / `pages_read_engagement`.
+     * Read Page engagement metrics for the daily board report:
+     *   • followers
+     *   • 28-day page reach + engagement
+     *   • per-post reach / reactions / clicks / shares
+     *   • the top posts by reach
+     *
+     * Uses the CURRENT (non-deprecated) Graph metric names:
+     *   page:  page_impressions_unique (reach), page_post_engagements
+     *   post:  post_impressions_unique (reach), post_clicks,
+     *          post_reactions_by_type_total (reactions)
+     * Requires a Page token with `read_insights` + `pages_read_engagement`.
      *
      * @return array{ok: bool, data?: array, error?: string}
      */
-    public function getPageInsights(int $recentPosts = 5): array
+    public function getPageInsights(int $recentPosts = 8): array
     {
         if (!$this->isConfigured()) {
             return ['ok' => false, 'error' => 'Facebook not configured (no Page Access Token in .env)'];
         }
+        $tok = urlencode($this->accessToken);
+        $base = "{$this->baseUrl}/{$this->apiVersion}/{$this->pageId}";
 
-        // 1) Page-level: name + follower/fan count
-        $pageUrl = "{$this->baseUrl}/{$this->apiVersion}/{$this->pageId}"
-            . "?fields=name,fan_count,followers_count&access_token=" . urlencode($this->accessToken);
-        $page = $this->getJson($pageUrl);
+        // 1) Page basics: name + followers
+        $page = $this->getJson("{$base}?fields=name,fan_count,followers_count&access_token={$tok}");
         if (!($page['ok'] ?? false)) {
             return ['ok' => false, 'error' => $page['error'] ?? 'page fetch failed'];
         }
 
-        // 2) Recent posts + their reach/engagement
-        $postsUrl = "{$this->baseUrl}/{$this->apiVersion}/{$this->pageId}/posts"
-            . "?fields=message,created_time,shares,"
-            . "insights.metric(post_impressions,post_engaged_users)"
-            . "&limit={$recentPosts}&access_token=" . urlencode($this->accessToken);
-        $posts = $this->getJson($postsUrl);
+        // 2) Page-level reach + engagement over the last 28 days
+        $reach28 = $eng28 = null;
+        $pm = $this->getJson("{$base}/insights?metric=page_impressions_unique,page_post_engagements&period=days_28&access_token={$tok}");
+        foreach (($pm['data']['data'] ?? []) as $m) {
+            $v = end($m['values'])['value'] ?? null;  // most recent value
+            if ($m['name'] === 'page_impressions_unique') $reach28 = $v;
+            if ($m['name'] === 'page_post_engagements')   $eng28   = $v;
+        }
 
+        // 3) Recent posts, then per-post insights
+        $posts = $this->getJson("{$base}/posts?fields=message,created_time,shares&limit={$recentPosts}&access_token={$tok}");
         $recent = [];
         foreach (($posts['data']['data'] ?? []) as $p) {
-            $impr = $eng = null;
-            foreach (($p['insights']['data'] ?? []) as $m) {
-                if ($m['name'] === 'post_impressions')  $impr = $m['values'][0]['value'] ?? null;
-                if ($m['name'] === 'post_engaged_users') $eng  = $m['values'][0]['value'] ?? null;
+            $pid = $p['id'] ?? null;
+            $reach = $clicks = $reactions = 0;
+            if ($pid) {
+                $pi = $this->getJson("{$this->baseUrl}/{$this->apiVersion}/{$pid}/insights"
+                    . "?metric=post_impressions_unique,post_clicks,post_reactions_by_type_total&access_token={$tok}");
+                foreach (($pi['data']['data'] ?? []) as $m) {
+                    $val = $m['values'][0]['value'] ?? 0;
+                    if ($m['name'] === 'post_impressions_unique') $reach  = (int) $val;
+                    if ($m['name'] === 'post_clicks')             $clicks = (int) $val;
+                    if ($m['name'] === 'post_reactions_by_type_total') {
+                        $reactions = is_array($val) ? array_sum($val) : (int) $val;
+                    }
+                }
             }
             $recent[] = [
-                'date'        => $p['created_time'] ?? '',
-                'excerpt'     => mb_substr((string)($p['message'] ?? '(no text)'), 0, 80),
-                'impressions' => $impr,
-                'engaged'     => $eng,
-                'shares'      => $p['shares']['count'] ?? 0,
+                'date'       => $p['created_time'] ?? '',
+                'excerpt'    => mb_substr((string) ($p['message'] ?? '(no text)'), 0, 70),
+                'reach'      => $reach,
+                'reactions'  => $reactions,
+                'clicks'     => $clicks,
+                'shares'     => $p['shares']['count'] ?? 0,
+                'engagement' => $reactions + $clicks + (int) ($p['shares']['count'] ?? 0),
             ];
         }
 
+        // 4) Top posts by reach (then engagement)
+        $top = $recent;
+        usort($top, static fn ($a, $b) => ($b['reach'] <=> $a['reach']) ?: ($b['engagement'] <=> $a['engagement']));
+        $top = array_slice($top, 0, 3);
+
         return ['ok' => true, 'data' => [
-            'name'      => $page['data']['name']            ?? '',
-            'followers' => $page['data']['followers_count'] ?? ($page['data']['fan_count'] ?? null),
-            'recent'    => $recent,
+            'name'           => $page['data']['name']            ?? '',
+            'followers'      => $page['data']['followers_count'] ?? ($page['data']['fan_count'] ?? 0),
+            'reach_28d'      => $reach28,
+            'engagement_28d' => $eng28,
+            'recent'         => $recent,
+            'top'            => $top,
         ]];
     }
 

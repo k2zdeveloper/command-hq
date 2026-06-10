@@ -184,11 +184,20 @@ class DailyBoardReport extends BaseCommand
             $ins = $fb->getPageInsights();
             if ($ins['ok'] ?? false) {
                 $d = $ins['data'];
-                $lines[] = 'FACEBOOK INSIGHTS: page "' . ($d['name'] ?? '?') . '", followers='
-                    . ($d['followers'] ?? 'n/a') . '. Recent posts:';
+                $lines[] = 'FACEBOOK INSIGHTS: page "' . ($d['name'] ?? '?') . '"'
+                    . ' — followers=' . ($d['followers'] ?? 'n/a')
+                    . ', 28-day reach=' . ($d['reach_28d'] ?? 'n/a')
+                    . ', 28-day engagement=' . ($d['engagement_28d'] ?? 'n/a') . '.';
+                $lines[] = '  Recent posts (' . count($d['recent'] ?? []) . '):';
                 foreach (($d['recent'] ?? []) as $p) {
-                    $lines[] = "  • {$p['date']}: impr=" . ($p['impressions'] ?? 'n/a')
-                        . ', engaged=' . ($p['engaged'] ?? 'n/a') . ", shares={$p['shares']} — \"{$p['excerpt']}\"";
+                    $lines[] = "    • {$p['date']}: reach={$p['reach']}, reactions={$p['reactions']}, "
+                        . "clicks={$p['clicks']}, shares={$p['shares']} (engagement={$p['engagement']}) — \"{$p['excerpt']}\"";
+                }
+                if (!empty($d['top'])) {
+                    $lines[] = '  TOP posts by reach:';
+                    foreach ($d['top'] as $i => $t) {
+                        $lines[] = '    ' . ($i + 1) . ". reach={$t['reach']}, engagement={$t['engagement']} — \"{$t['excerpt']}\"";
+                    }
                 }
             } else {
                 $lines[] = 'FACEBOOK INSIGHTS: configured but failed — ' . ($ins['error'] ?? 'unknown');
