@@ -80,7 +80,7 @@ class ToolDispatcher
      */
     public function hasTools(string $text): bool
     {
-        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK)\]/i', $text);
+        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK|COMPANY_REPORT)\]/i', $text);
     }
 
     /**
@@ -132,6 +132,15 @@ class ToolDispatcher
                 log_message('info', "ToolDispatcher: CHECK_SITE — {$url} (scope={$scope})");
                 $result    = $this->siteCheck->check($url, $scope);
                 $results[] = $this->wrapResult('CHECK_SITE', $result);
+            }
+        }
+
+        // ── [COMPANY_REPORT] ... [/COMPANY_REPORT] ───────────────────
+        if (preg_match_all('/\[COMPANY_REPORT\](.*?)\[\/COMPANY_REPORT\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $focus = strtolower((string) ($this->field($block, 'focus') ?? 'all'));
+                log_message('info', "ToolDispatcher: COMPANY_REPORT (focus={$focus})");
+                $results[] = $this->wrapResult('COMPANY_REPORT', $this->companyReport($focus));
             }
         }
 
@@ -930,6 +939,56 @@ class ToolDispatcher
      *   multi
      *   line value
      */
+    // ── Tool: Company Report (all companies at once) ─────────────────────
+
+    /**
+     * On-demand status of ALL companies (from app/Config/Companies.php):
+     * live website status and/or Facebook page metrics.
+     * $focus: 'website' | 'facebook' | 'all' (default).
+     */
+    private function companyReport(string $focus): string
+    {
+        $companies = \Config\Companies::LIST;
+        $out = [];
+
+        if ($focus === 'all' || $focus === 'website') {
+            $out[] = '── WEBSITE STATUS (all companies) ──';
+            foreach ($companies as $c) {
+                $name = $c['name'] ?? '?';
+                $url  = $c['website'] ?? '';
+                if ($url === '') {
+                    $out[] = "  • {$name}: ⚪ no website configured yet";
+                    continue;
+                }
+                $first = strtok($this->siteCheck->check($url), "\n"); // first line = 🟢/🔴 status
+                $out[] = "  • {$name}: {$first}";
+            }
+        }
+
+        if ($focus === 'all' || $focus === 'facebook') {
+            $out[] = '── FACEBOOK STATUS ──';
+            if ($this->facebook->isConfigured()) {
+                $ins = $this->facebook->getPageInsights();
+                if ($ins['ok'] ?? false) {
+                    $d = $ins['data'];
+                    $out[] = "  • Page \"" . ($d['name'] ?? '?') . "\": followers=" . ($d['followers'] ?? 'n/a')
+                        . ', 28-day reach=' . ($d['reach_28d'] ?? 'n/a')
+                        . ', 28-day engagement=' . ($d['engagement_28d'] ?? 'n/a');
+                    foreach (array_slice($d['top'] ?? [], 0, 3) as $i => $t) {
+                        $out[] = '      top ' . ($i + 1) . ": reach={$t['reach']}, engagement={$t['engagement']} — \"{$t['excerpt']}\"";
+                    }
+                } else {
+                    $out[] = '  • Facebook error: ' . ($ins['error'] ?? 'unknown');
+                }
+                $out[] = '  (Note: one Facebook page is connected for now; per-company pages can be added later.)';
+            } else {
+                $out[] = '  • Facebook not connected (no Page token in .env).';
+            }
+        }
+
+        return implode("\n", $out);
+    }
+
     private function field(string $block, string $name): ?string
     {
         // Multi-line: field name on its own line, content follows until next field or end
@@ -1005,6 +1064,16 @@ IMPORTANT — how to read the results, so you don't raise false alarms:
 - JS-rendered sites (Wix, React) may show "no forms/links in static HTML" — that
   is a limitation of static checking, not a site defect. Use scope: site for pages.
 - Report ONLY what the tool actually returned. Never invent statuses or numbers.
+
+### 🏢 Company Report (ALL companies at once)
+When asked for the status/report of ALL companies (e.g. "website status of every
+company", "give me the Facebook report for all companies", "status of all our
+businesses"), use this — it checks each company's live website and the connected
+Facebook page in one step. Set focus to `website`, `facebook`, or `all`.
+
+[COMPANY_REPORT]
+focus: all
+[/COMPANY_REPORT]
 
 ### 📘 Post to Facebook Page
 Publish a post to the company's connected Facebook Page. Use for announcements,

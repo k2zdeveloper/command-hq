@@ -49,36 +49,10 @@ class DailyBoardReport extends BaseCommand
     ];
 
     /**
-     * Companies to report on. EDIT THIS as you learn each company's URLs.
+     * Companies to report on — managed in one place: app/Config/Companies.php.
      * Every `website` and `socials` URL is checked live for reachability.
      */
-    private const COMPANIES = [
-        'positive_nation' => [
-            'name'    => 'Positive Nation',
-            'website' => 'https://www.positivenation.org/',
-            'socials' => [
-                // 'Facebook'  => 'https://www.facebook.com/yourpage',
-                // 'Instagram' => 'https://www.instagram.com/yourhandle',
-                // 'TikTok'    => 'https://www.tiktok.com/@yourhandle',
-                // 'YouTube'   => 'https://www.youtube.com/@yourchannel',
-            ],
-        ],
-        'k2z_digital' => [
-            'name'    => 'K2Z Digital',
-            'website' => '',
-            'socials' => [],
-        ],
-        'zengit' => [
-            'name'    => 'Zengit',
-            'website' => '',
-            'socials' => [],
-        ],
-        'a2zwellness' => [
-            'name'    => 'A2Z Wellness',
-            'website' => '',
-            'socials' => [],
-        ],
-    ];
+    private const COMPANIES = \Config\Companies::LIST;
 
     public function run(array $params)
     {
