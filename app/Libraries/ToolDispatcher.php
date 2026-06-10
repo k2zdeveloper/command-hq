@@ -80,7 +80,7 @@ class ToolDispatcher
      */
     public function hasTools(string $text): bool
     {
-        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK|COMPANY_REPORT)\]/i', $text);
+        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK|COMPANY_REPORT|EMAIL_REPORT)\]/i', $text);
     }
 
     /**
@@ -141,6 +141,35 @@ class ToolDispatcher
                 $focus = strtolower((string) ($this->field($block, 'focus') ?? 'all'));
                 log_message('info', "ToolDispatcher: COMPANY_REPORT (focus={$focus})");
                 $results[] = $this->wrapResult('COMPANY_REPORT', $this->companyReport($focus));
+            }
+        }
+
+        // ── [EMAIL_REPORT] ... [/EMAIL_REPORT] ───────────────────────
+        // Emails the REAL measured all-companies report. The body is built
+        // from live data (NOT written by the agent), so it can't be faked,
+        // and it defaults to the configured chairman.email.
+        if (preg_match_all('/\[EMAIL_REPORT\](.*?)\[\/EMAIL_REPORT\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                // Use 'to' only if it's a real email; otherwise default to the
+                // configured chairman email (env() works in web; smtp.fromEmail
+                // is a guaranteed fallback since it's the verified sender).
+                $to = (string) ($this->field($block, 'to') ?? '');
+                if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                    $to = (string) (env('chairman.email') ?: getenv('chairman.email')
+                        ?: env('smtp.fromEmail') ?: getenv('smtp.fromEmail') ?: '');
+                }
+                if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                    $results[] = $this->wrapResult('EMAIL_REPORT', "⚠ No valid recipient — set chairman.email in .env or pass a 'to' address.");
+                    continue;
+                }
+                $focus   = strtolower((string) ($this->field($block, 'focus') ?? 'all'));
+                $date    = date('F j, Y');
+                $body    = "# Company Report — {$date}\n\n"
+                    . "Live, measured status of all companies (auto-generated — figures are real, not estimated).\n\n"
+                    . $this->companyReport($focus);
+                log_message('info', "ToolDispatcher: EMAIL_REPORT → {$to}");
+                $send = $this->email->send($to, "Company Report — {$date}", $body);
+                $results[] = $this->wrapResult('EMAIL_REPORT', "Recipient: {$to}\n{$send}");
             }
         }
 
@@ -1074,6 +1103,18 @@ Facebook page in one step. Set focus to `website`, `facebook`, or `all`.
 [COMPANY_REPORT]
 focus: all
 [/COMPANY_REPORT]
+
+### 📧 Email the Company Report
+When asked to EMAIL/send the company report (e.g. "email me the full report",
+"send the report to the chairman"), use THIS — do NOT hand-write a report into
+[SEND_EMAIL]. This builds the report from REAL live data and emails it; the body
+cannot be faked. Leave `to` blank to send to the configured chairman email, or
+set a specific address. Never invent events, metrics, or facts in a report.
+
+[EMAIL_REPORT]
+to:
+focus: all
+[/EMAIL_REPORT]
 
 ### 📘 Post to Facebook Page
 Publish a post to the company's connected Facebook Page. Use for announcements,
