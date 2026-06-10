@@ -980,7 +980,15 @@ class ToolDispatcher
         $companies = \Config\Companies::LIST;
         $out = [];
 
-        if ($focus === 'all' || $focus === 'website') {
+        // Robust to whatever the agent typed: only a clear "website"/"facebook"
+        // narrows it; anything else (all / blank / "all companies" / typo)
+        // shows EVERYTHING — so the report is never accidentally empty.
+        $webOnly      = in_array($focus, ['website', 'web', 'site'], true);
+        $fbOnly       = in_array($focus, ['facebook', 'fb'], true);
+        $wantWebsite  = !$fbOnly;
+        $wantFacebook = !$webOnly;
+
+        if ($wantWebsite) {
             $out[] = '── WEBSITE STATUS (all companies) ──';
             foreach ($companies as $c) {
                 $name = $c['name'] ?? '?';
@@ -994,7 +1002,7 @@ class ToolDispatcher
             }
         }
 
-        if ($focus === 'all' || $focus === 'facebook') {
+        if ($wantFacebook) {
             $out[] = '── FACEBOOK STATUS ──';
             if ($this->facebook->isConfigured()) {
                 $ins = $this->facebook->getPageInsights();
