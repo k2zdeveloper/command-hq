@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connecting Facebook to Mosbat AI — Simple Guide</title>
+<style>
+  :root{--ink:#23201b;--muted:#6b6258;--gold:#b9881f;--gold-d:#8a5a10;--line:#e7e0d4;--bg:#faf7f0;--red:#c0392b;--green:#2e7d32;}
+  body{font-family:Georgia,serif;color:var(--ink);line-height:1.65;max-width:760px;margin:0 auto;padding:48px 30px;font-size:12.5pt;}
+  h1,h2,h3{font-family:"Segoe UI",Arial,sans-serif;}
+  h1{font-size:26pt;margin:0 0 4px;}
+  .brand{font-family:"Segoe UI",Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;font-size:9.5pt;color:var(--gold);font-weight:700;}
+  h2{font-size:16pt;color:var(--gold-d);border-bottom:2px solid var(--gold);padding-bottom:5px;margin:30px 0 10px;}
+  h3{font-size:12.5pt;margin:18px 0 4px;}
+  .lead{font-size:13pt;color:#403a31;}
+  ol{margin:8px 0 8px 22px;} li{margin:8px 0;}
+  code{font-family:Consolas,monospace;background:#f1ece1;padding:1px 6px;border-radius:4px;font-size:10.5pt;}
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 18px;margin:14px 0;}
+  .note{border-left:4px solid var(--gold);background:var(--bg);padding:10px 16px;border-radius:0 8px 8px 0;margin:12px 0;}
+  .warn{border-left:4px solid var(--red);}
+  .ok{border-left:4px solid var(--green);}
+  .muted{color:var(--muted);font-size:11pt;}
+  hr{border:none;border-top:1px solid var(--line);margin:24px 0;}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-family:"Segoe UI",Arial,sans-serif;font-size:11pt;}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;}
+  th{background:#f3ead6;color:var(--gold-d);}
+  @page{margin:0.7in;}
+</style>
+</head>
+<body>
+  <div class="brand">Mosbat AI · Command HQ</div>
+  <h1>Connecting Facebook for Daily Reports</h1>
+  <p class="lead">A step-by-step, non-technical guide to switch on <strong>real Facebook numbers</strong> (followers, reach, post engagement) in your daily board report.</p>
+
+  <div class="note">
+    <strong>You don't need this to start.</strong> The daily report already works and emails you every day using live website checks and AI analysis. This guide only <em>adds</em> real Facebook metrics on top. Do it whenever you're ready.
+  </div>
+
+  <h2>What you're getting</h2>
+  <p>Facebook calls this a <strong>Page Access Token</strong> — think of it as a special key that lets our system <em>read</em> your Page's numbers. Once you paste this key into the system, the daily report automatically starts including real Facebook follower counts and post performance. No code changes needed.</p>
+
+  <h2>Before you start — you need</h2>
+  <table>
+    <tr><th>Requirement</th><th>Why</th></tr>
+    <tr><td>Admin access to the Facebook <strong>Page</strong></td><td>Only an admin can grant the key.</td></tr>
+    <tr><td>A Facebook account you can log in with</td><td>To open the tools below.</td></tr>
+    <tr><td>~15 minutes</td><td>It's a one-time setup.</td></tr>
+  </table>
+
+  <h2>The steps</h2>
+  <ol>
+    <li><strong>Open Meta for Developers.</strong> Go to <code>developers.facebook.com</code> and log in. Click <strong>My Apps → Create App</strong>. Choose type <strong>"Business"</strong>, give it any name (e.g. "Mosbat Reporting"), and create it.</li>
+
+    <li><strong>Open the Graph API Explorer.</strong> Go to <code>developers.facebook.com/tools/explorer</code>. In the top-right, select the app you just created.</li>
+
+    <li><strong>Choose your Page.</strong> Click the <strong>"User or Page"</strong> dropdown → <strong>Get Page Access Token</strong> → pick your Page and approve the popup.</li>
+
+    <li><strong>Add the read permissions.</strong> Click <strong>"Add a Permission"</strong> and tick these three:
+      <div class="card muted">
+        <code>pages_read_engagement</code> · <code>pages_show_list</code> · <code>read_insights</code>
+      </div>
+      Then click <strong>"Generate Access Token"</strong> and approve. A long code appears in the "Access Token" box — that's your key.</li>
+
+    <li><strong>Make the key long-lived (important).</strong> The key from step 4 expires in about an hour. To get one that lasts ~60 days, open the <strong>Access Token Debugger</strong> at <code>developers.facebook.com/tools/debug/accesstoken</code>, paste your key, click <strong>Debug</strong>, then click <strong>"Extend Access Token"</strong> at the bottom. Copy the new, longer-lasting key.</li>
+
+    <li><strong>Find your Page ID.</strong> On your Facebook Page, go to <strong>Settings → About</strong> and scroll to <strong>"Page ID"</strong> (a long number). Or it's shown in the Graph API Explorer response.</li>
+
+    <li><strong>Give both to us.</strong> Send the team the <strong>Page ID</strong> and the <strong>long-lived token</strong>, or paste them into the system's <code>.env</code> file like this:
+      <div class="card">
+        <code>facebook.pageId&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= '1234567890'</code><br>
+        <code>facebook.pageAccessToken = 'EAAG...your-long-token...'</code>
+      </div>
+    </li>
+  </ol>
+
+  <div class="note ok">
+    <strong>That's it.</strong> The very next daily report will automatically include your real Facebook followers and recent post performance. Nothing else to do.
+  </div>
+
+  <h2>Good to know</h2>
+  <ul>
+    <li><strong>Tokens expire.</strong> The long-lived key lasts ~60 days. When it expires, the report will simply say "Facebook not connected" again, and you repeat steps 4–7. (A permanent "System User" token is possible later for zero maintenance — ask the team.)</li>
+    <li><strong>Instagram too.</strong> If your Instagram is a Business account linked to this Page, the same app can later pull Instagram numbers — a small add-on when you want it.</li>
+    <li><strong>It's read-only and safe.</strong> These permissions only let us <em>read</em> your numbers for the report. Keep the token private — treat it like a password.</li>
+  </ul>
+
+  <div class="note warn">
+    <strong>If you get stuck</strong> at any step, send the team a screenshot of where you are — the most common snag is the permissions in step 4 or extending the token in step 5.
+  </div>
+
+  <hr>
+  <p class="muted">Mosbat AI · Command HQ — Facebook Connection Guide. The daily board report works without this; it only adds real Facebook metrics.</p>
+</body>
+</html>

@@ -27,5 +27,10 @@ class Tasks extends BaseTasks
         $schedule->command('heartbeat:run --slug=pn-ceo')
                  ->daily('17:00')
                  ->named('pn-ceo-heartbeat');
+
+        // Daily 5:30 PM board report — all companies, emailed to the Chairman
+        $schedule->command('report:board')
+                 ->daily('17:30')
+                 ->named('daily-board-report');
     }
 }

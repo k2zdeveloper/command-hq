@@ -86,6 +86,79 @@ class FacebookService
     }
 
     /**
+     * Read basic Page insights for the daily board report.
+     * Returns follower count + the engagement of recent posts.
+     * Requires a Page Access Token with `read_insights` / `pages_read_engagement`.
+     *
+     * @return array{ok: bool, data?: array, error?: string}
+     */
+    public function getPageInsights(int $recentPosts = 5): array
+    {
+        if (!$this->isConfigured()) {
+            return ['ok' => false, 'error' => 'Facebook not configured (no Page Access Token in .env)'];
+        }
+
+        // 1) Page-level: name + follower/fan count
+        $pageUrl = "{$this->baseUrl}/{$this->apiVersion}/{$this->pageId}"
+            . "?fields=name,fan_count,followers_count&access_token=" . urlencode($this->accessToken);
+        $page = $this->getJson($pageUrl);
+        if (!($page['ok'] ?? false)) {
+            return ['ok' => false, 'error' => $page['error'] ?? 'page fetch failed'];
+        }
+
+        // 2) Recent posts + their reach/engagement
+        $postsUrl = "{$this->baseUrl}/{$this->apiVersion}/{$this->pageId}/posts"
+            . "?fields=message,created_time,shares,"
+            . "insights.metric(post_impressions,post_engaged_users)"
+            . "&limit={$recentPosts}&access_token=" . urlencode($this->accessToken);
+        $posts = $this->getJson($postsUrl);
+
+        $recent = [];
+        foreach (($posts['data']['data'] ?? []) as $p) {
+            $impr = $eng = null;
+            foreach (($p['insights']['data'] ?? []) as $m) {
+                if ($m['name'] === 'post_impressions')  $impr = $m['values'][0]['value'] ?? null;
+                if ($m['name'] === 'post_engaged_users') $eng  = $m['values'][0]['value'] ?? null;
+            }
+            $recent[] = [
+                'date'        => $p['created_time'] ?? '',
+                'excerpt'     => mb_substr((string)($p['message'] ?? '(no text)'), 0, 80),
+                'impressions' => $impr,
+                'engaged'     => $eng,
+                'shares'      => $p['shares']['count'] ?? 0,
+            ];
+        }
+
+        return ['ok' => true, 'data' => [
+            'name'      => $page['data']['name']            ?? '',
+            'followers' => $page['data']['followers_count'] ?? ($page['data']['fan_count'] ?? null),
+            'recent'    => $recent,
+        ]];
+    }
+
+    /** GET a Graph API URL and decode JSON. */
+    private function getJson(string $url): array
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $body   = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err    = curl_error($ch);
+        curl_close($ch);
+
+        if ($err)            return ['ok' => false, 'error' => $err];
+        $data = json_decode($body, true);
+        if (!is_array($data)) return ['ok' => false, 'error' => 'invalid response'];
+        if ($status >= 400)  return ['ok' => false, 'error' => $data['error']['message'] ?? "HTTP {$status}"];
+
+        return ['ok' => true, 'data' => $data];
+    }
+
+    /**
      * Post text-only to the Facebook Page feed (no image).
      */
     public function postText(string $message): array
