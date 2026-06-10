@@ -80,7 +80,7 @@ class ToolDispatcher
      */
     public function hasTools(string $text): bool
     {
-        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK|COMPANY_REPORT|EMAIL_REPORT)\]/i', $text);
+        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK|COMPANY_REPORT|EMAIL_REPORT|UPGRADE_AGENT)\]/i', $text);
     }
 
     /**
@@ -457,6 +457,21 @@ class ToolDispatcher
                 }
                 $result    = $this->fireAgent($agentName);
                 $results[] = $this->wrapResult('FIRE_AGENT', $result);
+            }
+        }
+
+        // ── [UPGRADE_AGENT] ... [/UPGRADE_AGENT] ─────────────────────
+        // Make an existing agent intelligent IN PLACE — regenerates an expert
+        // role-specific system prompt and reactivates it. Use this instead of
+        // firing + rehiring (which loses the agent and its history).
+        if (preg_match_all('/\[UPGRADE_AGENT\](.*?)\[\/UPGRADE_AGENT\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $agentName = $this->field($block, 'agent');
+                if (empty($agentName)) {
+                    $results[] = $this->wrapResult('UPGRADE_AGENT', '⚠ Skipped — "agent" name is required.');
+                    continue;
+                }
+                $results[] = $this->wrapResult('UPGRADE_AGENT', $this->upgradeAgent($agentName));
             }
         }
 
@@ -1012,6 +1027,41 @@ class ToolDispatcher
         return "✓ {$target['name']} has been deactivated (fired). This is reversible from the agent's Instructions tab.";
     }
 
+    // ── Tool: Upgrade Agent (make an existing agent intelligent, in place) ──
+
+    private function upgradeAgent(string $agentName): string
+    {
+        if (empty($this->companyId)) {
+            return "⚠ Cannot upgrade — company context not available.";
+        }
+        $roster = $this->supabase->getCompanyAgents($this->companyId);
+        $target = null;
+        foreach ($roster as $a) {
+            if (stripos($a['name'], $agentName) !== false) {
+                $target = $a;
+                break;
+            }
+        }
+        if (!$target) {
+            return "⚠ No agent found matching \"{$agentName}\".";
+        }
+
+        // Regenerate a rich, expert, role-specific prompt for the existing agent.
+        $newPrompt = $this->generateAgentPrompt(
+            (string) ($target['name'] ?? $agentName),
+            (string) ($target['role_title'] ?? 'Specialist'),
+            null
+        );
+
+        $this->supabase->updateAgent($target['id'], [
+            'system_prompt' => $newPrompt,
+            'is_active'     => true, // also reactivate if it had been deactivated
+        ]);
+
+        return "✓ {$target['name']} upgraded to an expert profile ("
+            . str_word_count($newPrompt) . " words) and active. No fire/rehire needed — history preserved.";
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     /**
@@ -1382,8 +1432,19 @@ reports_to: Manager Agent Name
 prompt: Their system prompt describing duties and behavior
 [/HIRE_AGENT]
 
+### ⬆️ Upgrade an Agent (make it smarter — in place)
+To make an EXISTING agent more capable/intelligent, use THIS — do NOT fire and
+re-hire it (that loses the agent and its history, and re-hiring an existing name
+fails). This regenerates an expert, role-specific profile in place and keeps the
+agent and its history.
+
+[UPGRADE_AGENT]
+agent: Graphic Designer Agent
+[/UPGRADE_AGENT]
+
 ### 🚫 Fire (Deactivate) an Agent
 Deactivate an underperforming or redundant agent. This is reversible.
+To merely IMPROVE an agent, use [UPGRADE_AGENT] instead — never fire+rehire to upgrade.
 
 [FIRE_AGENT]
 agent: Agent Name
