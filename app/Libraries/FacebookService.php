@@ -16,10 +16,16 @@ class FacebookService
     private string $apiVersion = 'v19.0';
     private string $baseUrl    = 'https://graph.facebook.com';
 
-    public function __construct()
+    /**
+     * @param string $envPrefix Which .env keys to read, so each company can
+     *   have its own page. Default 'facebook' → facebook.pageId /
+     *   facebook.pageAccessToken. A second company could use e.g. 'facebook_k2z'
+     *   → facebook_k2z.pageId / facebook_k2z.pageAccessToken.
+     */
+    public function __construct(string $envPrefix = 'facebook')
     {
-        $this->pageId      = trim((string)(env('facebook.pageId')      ?: ''), "\"' \t");
-        $this->accessToken = trim((string)(env('facebook.pageAccessToken') ?: ''), "\"' \t");
+        $this->pageId      = trim((string)(env("{$envPrefix}.pageId")          ?: ''), "\"' \t");
+        $this->accessToken = trim((string)(env("{$envPrefix}.pageAccessToken") ?: ''), "\"' \t");
     }
 
     public function isConfigured(): bool

@@ -61,7 +61,6 @@ class DailyBoardReport extends BaseCommand
 
         $supabase  = new SupabaseModel();
         $siteCheck = new SiteCheckService();
-        $facebook  = new FacebookService();
 
         $companies = self::COMPANIES;
         if ($only && isset($companies[$only])) {
@@ -73,9 +72,21 @@ class DailyBoardReport extends BaseCommand
 
         foreach ($companies as $division => $cfg) {
             CLI::write("Gathering: {$cfg['name']} ({$division})", 'cyan');
-            $facts   = $this->gatherFacts($supabase, $siteCheck, $facebook, $division, $cfg);
+
+            // Full, detailed website scan (every page via sitemap) — done once,
+            // used both for the AI summary and the verbatim details appendix.
+            $siteReport = !empty($cfg['website'])
+                ? $siteCheck->check($cfg['website'], 'site')
+                : '';
+
+            $facts   = $this->gatherFacts($supabase, $siteCheck, $division, $cfg, $siteReport);
             $section = $this->analyze($cfg['name'], $facts);
-            $sections[] = "## {$cfg['name']}\n\n{$section}";
+
+            $block = "## {$cfg['name']}\n\n{$section}";
+            if ($siteReport !== '') {
+                $block .= "\n\n### 🌐 Website Details (live, all pages)\n" . $siteReport;
+            }
+            $sections[] = $block;
         }
 
         $report = "# Daily Board Report — {$today}\n\n"
@@ -119,9 +130,9 @@ class DailyBoardReport extends BaseCommand
     private function gatherFacts(
         SupabaseModel    $sb,
         SiteCheckService $site,
-        FacebookService  $fb,
         string           $division,
-        array            $cfg
+        array            $cfg,
+        string           $siteReport = ''
     ): string {
         $lines = [];
 
@@ -134,10 +145,10 @@ class DailyBoardReport extends BaseCommand
             $lines[] = 'TEAM: unavailable.';
         }
 
-        // Website health (live)
+        // Website health (uses the detailed scan already done in run())
         if (!empty($cfg['website'])) {
             $lines[] = "WEBSITE CHECK ({$cfg['website']}):";
-            $lines[] = $site->check($cfg['website']);
+            $lines[] = $siteReport;
         } else {
             $lines[] = 'WEBSITE: no URL configured for this company yet.';
         }
@@ -153,8 +164,12 @@ class DailyBoardReport extends BaseCommand
             $lines[] = 'SOCIAL HANDLES: none configured yet. (Add each profile URL to enable live checks.)';
         }
 
-        // Facebook insights — ONLY if a token is configured
-        if ($fb->isConfigured()) {
+        // Facebook insights — ONLY for a company that actually has a page.
+        // 'facebook' in the config is the .env key prefix for that page.
+        $fb = !empty($cfg['facebook']) ? new FacebookService($cfg['facebook']) : null;
+        if ($fb === null) {
+            $lines[] = 'FACEBOOK: no page connected for this company.';
+        } elseif ($fb->isConfigured()) {
             $ins = $fb->getPageInsights();
             if ($ins['ok'] ?? false) {
                 $d = $ins['data'];

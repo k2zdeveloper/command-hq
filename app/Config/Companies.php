@@ -20,26 +20,31 @@ class Companies
 {
     public const LIST = [
         'positive_nation' => [
-            'name'    => 'Positive Nation',
-            'website' => 'https://www.positivenation.org/',
-            'socials' => [
-                // 'Facebook'  => 'https://www.facebook.com/yourpage',
+            'name'     => 'Positive Nation',
+            'website'  => 'https://www.positivenation.org/',
+            // 'facebook' = the .env key prefix for THIS company's page.
+            // Only set it for companies that actually have a page connected.
+            'facebook' => 'facebook', // → facebook.pageId / facebook.pageAccessToken
+            'socials'  => [
                 // 'Instagram' => 'https://www.instagram.com/yourhandle',
             ],
         ],
         'k2z_digital' => [
             'name'    => 'K2Z Digital',
             'website' => '',
+            // 'facebook' => 'facebook_k2z',  // add when K2Z's page is connected
             'socials' => [],
         ],
         'zengit' => [
             'name'    => 'Zengit',
             'website' => '',
+            // 'facebook' => 'facebook_zengit',
             'socials' => [],
         ],
         'a2zwellness' => [
             'name'    => 'A2Z Wellness',
             'website' => '',
+            // 'facebook' => 'facebook_a2z',
             'socials' => [],
         ],
     ];
