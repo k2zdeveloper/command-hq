@@ -40,6 +40,7 @@ class ToolDispatcher
     private EmailService     $email;
     private ImageService     $image;
     private SiteCheckService $siteCheck;
+    private FacebookService  $facebook;
     private SupabaseModel    $supabase;
     private string           $companyId;
     private ?string          $agentId;
@@ -50,6 +51,7 @@ class ToolDispatcher
         $this->email     = new EmailService();
         $this->image     = new ImageService();
         $this->siteCheck = new SiteCheckService();
+        $this->facebook  = new FacebookService();
         $this->supabase  = new SupabaseModel();
         $this->companyId = $companyId;
         $this->agentId   = $agentId;
@@ -78,7 +80,7 @@ class ToolDispatcher
      */
     public function hasTools(string $text): bool
     {
-        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE)\]/i', $text);
+        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE|POST_FACEBOOK)\]/i', $text);
     }
 
     /**
@@ -130,6 +132,36 @@ class ToolDispatcher
                 log_message('info', "ToolDispatcher: CHECK_SITE — {$url} (scope={$scope})");
                 $result    = $this->siteCheck->check($url, $scope);
                 $results[] = $this->wrapResult('CHECK_SITE', $result);
+            }
+        }
+
+        // ── [POST_FACEBOOK] ... [/POST_FACEBOOK] ─────────────────────
+        if (preg_match_all('/\[POST_FACEBOOK\](.*?)\[\/POST_FACEBOOK\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $message = $this->field($block, 'message');
+                $image   = $this->field($block, 'image'); // optional public URL or local path
+                if (empty($message) && empty($image)) {
+                    $results[] = $this->wrapResult('POST_FACEBOOK', '⚠ Skipped — "message" (or "image") is required.');
+                    continue;
+                }
+                if (!$this->facebook->isConfigured()) {
+                    $results[] = $this->wrapResult('POST_FACEBOOK',
+                        '⚠ Facebook not connected — set facebook.pageId and facebook.pageAccessToken in .env.');
+                    continue;
+                }
+                log_message('info', 'ToolDispatcher: POST_FACEBOOK' . ($image ? ' (with image)' : ''));
+                $res = $image
+                    ? $this->facebook->postPhoto($image, (string) $message)
+                    : $this->facebook->postText((string) $message);
+
+                if ($res['ok'] ?? false) {
+                    $id  = $res['post_id'] ?? $res['id'] ?? '';
+                    $msg = "✓ Posted to Facebook Page successfully." . ($id ? "\n  Post ID: {$id}" : '');
+                    $this->recordArtifact('facebook_post', mb_substr((string) $message, 0, 80), $id, 'text/plain');
+                } else {
+                    $msg = '⚠ Facebook post failed — ' . ($res['error'] ?? 'unknown error');
+                }
+                $results[] = $this->wrapResult('POST_FACEBOOK', $msg);
             }
         }
 
@@ -954,6 +986,16 @@ IMPORTANT — how to read the results, so you don't raise false alarms:
 - JS-rendered sites (Wix, React) may show "no forms/links in static HTML" — that
   is a limitation of static checking, not a site defect. Use scope: site for pages.
 - Report ONLY what the tool actually returned. Never invent statuses or numbers.
+
+### 📘 Post to Facebook Page
+Publish a post to the company's connected Facebook Page. Use for announcements,
+campaigns, and updates. Add an `image` URL to post a photo with the caption.
+This posts publicly and immediately — only use it when the user clearly asks to post.
+
+[POST_FACEBOOK]
+message: The text/caption to publish on the Page.
+image: https://optional-public-image-url.jpg
+[/POST_FACEBOOK]
 
 ### 📧 Send Email
 Send an actual email to any address. Useful for reports, notifications, outreach.
