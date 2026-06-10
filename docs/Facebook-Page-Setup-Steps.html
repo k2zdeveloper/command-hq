@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How We Connected the Facebook Page — Repeatable Steps</title>
+<style>
+  :root{--ink:#23201b;--muted:#6b6258;--gold:#b9881f;--gold-d:#8a5a10;--line:#e7e0d4;--bg:#faf7f0;--red:#c0392b;--green:#2e7d32;--blue:#2c5aa0;}
+  body{font-family:Georgia,serif;color:var(--ink);line-height:1.6;max-width:780px;margin:0 auto;padding:46px 32px;font-size:12pt;}
+  h1,h2,h3{font-family:"Segoe UI",Arial,sans-serif;}
+  .brand{font-family:"Segoe UI",Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;font-size:9.5pt;color:var(--gold);font-weight:700;}
+  h1{font-size:25pt;margin:2px 0 4px;}
+  .sub{font-family:"Segoe UI",Arial,sans-serif;color:var(--gold-d);font-size:12.5pt;margin-bottom:6px;}
+  h2{font-size:15.5pt;color:var(--gold-d);border-bottom:2px solid var(--gold);padding-bottom:5px;margin:30px 0 8px;}
+  h3{font-size:12.5pt;margin:16px 0 4px;color:#3a342b;}
+  ol{margin:6px 0 6px 22px;} li{margin:7px 0;}
+  ol.steps>li{margin:12px 0;}
+  code{font-family:Consolas,monospace;background:#f1ece1;padding:1px 6px;border-radius:4px;font-size:10.3pt;}
+  .step-num{font-family:"Segoe UI",Arial,sans-serif;font-weight:700;color:#fff;background:var(--gold);border-radius:50%;display:inline-block;width:22px;height:22px;text-align:center;line-height:22px;font-size:11pt;margin-right:6px;}
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:12px 16px;margin:12px 0;}
+  .tip{border-left:4px solid var(--gold);background:var(--bg);padding:9px 15px;border-radius:0 8px 8px 0;margin:10px 0;font-size:11pt;}
+  .warn{border-left:4px solid var(--red);}
+  .ok{border-left:4px solid var(--green);}
+  .gotcha{border-left:4px solid var(--blue);background:#eef3fa;padding:9px 15px;border-radius:0 8px 8px 0;margin:10px 0;font-size:11pt;}
+  .gotcha::before{content:"⚠ We hit this snag: ";font-weight:700;color:var(--blue);}
+  .muted{color:var(--muted);}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-family:"Segoe UI",Arial,sans-serif;font-size:10.7pt;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f3ead6;color:var(--gold-d);}
+  hr{border:none;border-top:1px solid var(--line);margin:22px 0;}
+  .perm{font-family:Consolas,monospace;background:#efe6cf;color:var(--gold-d);padding:2px 7px;border-radius:5px;font-size:10pt;display:inline-block;margin:2px 0;}
+  @page{margin:0.65in;}
+  .break{page-break-before:always;}
+  .keep{page-break-inside:avoid;}
+</style>
+</head>
+<body>
+  <div class="brand">Mosbat AI · Command HQ</div>
+  <h1>Connecting a Facebook Page</h1>
+  <div class="sub">The exact, repeatable steps — use this for each company's real Page</div>
+  <p class="muted">This is the path that actually worked, with the snags we hit clearly marked so you can avoid them. Total time once you know it: ~10 minutes per Page.</p>
+
+  <div class="card keep">
+    <strong>The goal:</strong> get two things into the system —
+    <ol style="margin:6px 0 0 18px;">
+      <li>Your <strong>Page ID</strong></li>
+      <li>A <strong>permanent Page Access Token</strong> (never expires)</li>
+    </ol>
+    With those, the daily report reads real Facebook numbers and the system can auto-post — forever, no refreshing.
+  </div>
+
+  <h2>The 4 permissions you'll need every time</h2>
+  <p>These let the system read your stats and post for you (read-only for reports; posting is optional):</p>
+  <p>
+    <span class="perm">pages_show_list</span>
+    <span class="perm">pages_read_engagement</span>
+    <span class="perm">read_insights</span>
+    <span class="perm">pages_manage_posts</span>
+  </p>
+
+  <hr>
+  <h2>Part A — Create the app (once for the whole business)</h2>
+  <p class="muted">You only do Part A one time. For additional Pages later, you can reuse the same app and jump to Part B.</p>
+  <ol class="steps">
+    <li><span class="step-num">1</span><strong>Create the app.</strong> Go to <code>developers.facebook.com</code> → <strong>My Apps → Create App</strong>. App type: <strong>Business</strong>. Name it (we used <strong>PN-Automation</strong>).</li>
+
+    <li><span class="step-num">2</span><strong>Pick the use case.</strong> On "What do you want your app to do?", choose <strong>"Manage everything on your Page."</strong>
+      <div class="gotcha">The <strong>"Other"</strong> option is being removed by Meta — don't use it. "Manage everything on your Page" is the right one; it covers both reading stats <em>and</em> posting.</div>
+    </li>
+
+    <li><span class="step-num">3</span><strong>Skip the business portfolio prompt.</strong> When asked to connect a verified business portfolio, choose <strong>"add later"</strong>. It's fine — we only touch your own Page, so verification isn't required.</li>
+
+    <li><span class="step-num">4</span><strong>Add the 4 permissions to the use case.</strong> In the app's left sidebar → <strong>Use cases</strong> → open <strong>"Manage everything on your Page"</strong> → <strong>Customize</strong> → click <strong>Add</strong> next to each of the four permissions listed above.
+      <div class="gotcha">At first only <code>pages_show_list</code> was available in the Graph API Explorer. The fix is exactly this step — permissions must be <strong>added to the use case here</strong> before they show up anywhere else.</div>
+    </li>
+  </ol>
+
+  <h2 class="break">Part B — Put the Page in your Business Portfolio</h2>
+  <ol class="steps">
+    <li><span class="step-num">5</span><strong>Open Business Settings.</strong> Go to <code>business.facebook.com</code> → <strong>Settings</strong> (gear icon).</li>
+
+    <li><span class="step-num">6</span><strong>Confirm the Page is there.</strong> Left menu → <strong>Accounts → Pages</strong>. Your Page should be listed (ours was <strong>"Upload Automation"</strong>). If it isn't, click <strong>Add → Add a Page</strong> and connect it.
+      <div class="gotcha">This was the real blocker. The token kept showing <strong>zero Pages</strong> because the Page wasn't surfacing. A Page owned by a Business Portfolio must be (a) listed here and (b) assigned to a system user — a regular personal token won't see it.</div>
+    </li>
+    <li><span class="step-num">7</span><strong>Note the Page name.</strong> You'll confirm it later. (We never had to copy the ID by hand — the system fetches it from the token.)</li>
+  </ol>
+
+  <h2>Part C — Create a System User (the permanent, no-expiry key)</h2>
+  <p class="muted">A "System User" is a robot account for automation. Its token never expires — perfect for a daily report.</p>
+  <ol class="steps">
+    <li><span class="step-num">8</span><strong>Create it.</strong> Business Settings → <strong>Users → System users → Add</strong>. Name it <strong>Automation Bot</strong>.
+      <div class="gotcha">Role <strong>Admin</strong> was blocked ("maximum 1 admin system user"). The fix: set the role to <strong>Employee</strong> instead — it works perfectly for reading and posting to a Page.</div>
+    </li>
+
+    <li><span class="step-num">9</span><strong>Assign the Page to it.</strong> Select <strong>Automation Bot</strong> → <strong>Assign assets → Pages</strong> → pick your Page → turn on <strong>Full control</strong> → Save.</li>
+
+    <li><span class="step-num">10</span><strong>Assign the App to it.</strong> Same screen → <strong>Assign assets → Apps</strong> → pick your app → <strong>Full control</strong> → Save.
+      <div class="tip">Both the <strong>Page</strong> and the <strong>App</strong> must be assigned to the system user. Assigning only one is why early attempts failed.</div>
+    </li>
+
+    <li><span class="step-num">11</span><strong>Generate the permanent token.</strong> With Automation Bot selected → <strong>Generate new token</strong> → choose your app → <strong>Token expiration: Never</strong> → tick the 4 permissions → <strong>Generate</strong>.
+      <div class="tip"><strong>Token expiration = Never</strong> is the magic setting. This is what makes it zero-maintenance — the token never has to be refreshed.</div>
+    </li>
+
+    <li><span class="step-num">12</span><strong>Copy the token and send it to the team</strong> (or paste into <code>.env</code>). That's it — the system fetches the Page ID from the token and saves both:
+      <div class="card">
+        <code>facebook.pageId&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= '988324637694167'</code><br>
+        <code>facebook.pageAccessToken = 'EAAZ...permanent token...'</code>
+      </div>
+    </li>
+  </ol>
+
+  <div class="tip ok"><strong>Done.</strong> The next daily report automatically includes that Page's real followers and post engagement — and it never breaks, because the token never expires.</div>
+
+  <h2>What went wrong (and the fix) — quick reference</h2>
+  <table class="keep">
+    <tr><th>Symptom we saw</th><th>The real cause</th><th>The fix</th></tr>
+    <tr><td>Only <code>pages_show_list</code> available</td><td>Permissions not added to the use case</td><td>Step 4 — add all 4 in Use cases → Customize</td></tr>
+    <tr><td>"Invalid Scopes: manage_pages"</td><td><code>manage_pages</code> was deleted by Meta years ago</td><td>Never request it; use the 4 granular ones</td></tr>
+    <tr><td>Token showed <strong>zero Pages</strong></td><td>Page is business-owned; user tokens don't surface it</td><td>Parts B + C — Page in business + system user</td></tr>
+    <tr><td>"Maximum 1 admin system user"</td><td>Admin system-user limit reached</td><td>Step 8 — use role <strong>Employee</strong></td></tr>
+    <tr><td>Token expired next day</td><td>It was a short-lived user token</td><td>Step 11 — System User token, expiry <strong>Never</strong></td></tr>
+  </table>
+
+  <h2>To add the REAL company Pages later</h2>
+  <p>For Positive Nation, K2Z Digital, Zengit, and A2Z Wellness, repeat <strong>only Parts B &amp; C</strong> for each Page (the app from Part A is reused):</p>
+  <ol>
+    <li>Add the company's Page to the Business Portfolio (Step 6).</li>
+    <li>Assign that Page to Automation Bot with Full control (Step 9).</li>
+    <li>Generate a fresh <strong>Never</strong>-expiry token for it (Step 11), or send the team the Page name — one token per Page.</li>
+  </ol>
+  <p class="muted">Then we map one Page to each company so every report section shows that company's own numbers.</p>
+
+  <hr>
+  <p class="muted">Mosbat AI · Command HQ — Facebook Page Setup Steps. Tokens are secrets — keep them private; never post them publicly or commit them to code.</p>
+</body>
+</html>
