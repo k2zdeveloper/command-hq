@@ -905,13 +905,22 @@ class ToolDispatcher
         $base = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
         $slug = $this->companyId . '-' . $base . '-' . substr(uniqid(), -4);
 
+        // Make the new hire INTELLIGENT from day one. Only keep a caller-provided
+        // prompt if it's genuinely detailed (>= 280 chars). Agents usually pass a
+        // thin one-liner — in that case we generate a full expert prompt, feeding
+        // the agent's brief intent in as a hint so nothing is lost.
+        $provided = is_string($prompt) ? trim($prompt) : '';
+        $systemPrompt = (mb_strlen($provided) >= 280)
+            ? $provided
+            : $this->generateAgentPrompt(trim($name), trim($role), $reportsTo, $provided);
+
         $agent = $this->supabase->createAgent([
             'slug'          => $slug,
             'name'          => trim($name),
             'role_title'    => trim($role),
             'division'      => $this->companyId,
             'parent_id'     => $parentId,
-            'system_prompt' => $prompt ?: "You are {$name}, the {$role}. Execute your responsibilities with precision and report results clearly to your manager.",
+            'system_prompt' => $systemPrompt,
             'model'         => 'claude-sonnet-4-6',
             'temperature'   => 0.7,
             'is_active'     => true,
@@ -924,6 +933,53 @@ class ToolDispatcher
 
         $mgr = $parentId ? " reporting to {$reportsTo}" : " (standalone)";
         return "✓ Agent hired successfully\n  Name: {$name}\n  Role: {$role}{$mgr}\n  Status: active (visible after page refresh)";
+    }
+
+    /**
+     * Generate a sharp, expert, role-specific system prompt for a new hire,
+     * so it behaves intelligently immediately instead of as a generic agent.
+     * Falls back to a solid template if the AI call fails.
+     */
+    private function generateAgentPrompt(string $name, string $role, ?string $reportsTo, string $hint = ''): string
+    {
+        $companyName = \Config\Companies::LIST[$this->companyId]['name'] ?? ucwords(str_replace('_', ' ', $this->companyId));
+        $reports     = $reportsTo ? "It reports to {$reportsTo}." : 'It reports to the CEO.';
+        $hintLine    = ($hint !== '') ? "\nManager's note about this hire (work it in): {$hint}" : '';
+
+        $sys = "You write the operating system-prompt for an AI employee. Given a company, a name, and a role, "
+            . "produce a DETAILED, expert-level system prompt of AT LEAST 200 words (second person, starting with "
+            . "\"You are\"). Do NOT be brief. It MUST cover, in flowing prose: (1) identity and DEEP domain expertise "
+            . "specific to the role; (2) 4-6 concrete core responsibilities; (3) the professional standards and quality "
+            . "bar it upholds; (4) how it approaches its work step by step (plan, execute, verify); (5) exactly which of "
+            . "its tools it reaches for and WHEN — web search, live site QA, image generation, PowerPoint/Word/Excel/"
+            . "document creation, email, Facebook posting, delegating tasks to other agents; (6) that it never fabricates "
+            . "facts or claims work it didn't do. Make it richly role-specific (a designer reasons about composition, "
+            . "hierarchy, colour and brand; a CFO about margins, runway and cash flow). End by noting it reports results "
+            . "clearly to its manager. Output ONLY the system prompt text — no preamble, no markdown headings.";
+        $user = "Company: {$companyName}\nAgent name: {$name}\nRole: {$role}\n{$reports}{$hintLine}\n\nWrite the system prompt now.";
+
+        try {
+            $r = (new ClaudeService())->chat(
+                $sys,
+                [['role' => 'user', 'content' => $user]],
+                0.6,
+                (string) (getenv('anthropic.model') ?: 'claude-sonnet-4-6')
+            );
+            $p = trim($r['text'] ?? '');
+            if (mb_strlen($p) >= 60) {
+                log_message('info', "ToolDispatcher: generated expert prompt for new hire {$name} ({$role})");
+                return $p;
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'generateAgentPrompt failed: ' . $e->getMessage());
+        }
+
+        // Fallback: richer-than-generic template.
+        return "You are {$name}, the {$role} at {$companyName}. You are an experienced, proactive expert in your field. "
+            . "Take ownership of everything within your role, hold a high quality bar, and use the tools available to you "
+            . "(web search, site checks, image/document generation, email, Facebook posting, task delegation) whenever they "
+            . "help you deliver real results. Think before you act, be specific, avoid generic filler, and never fabricate "
+            . "facts or claim work you haven't actually done. {$reports} Report your results clearly and concisely to your manager.";
     }
 
     // ── Tool: Fire Agent (deactivate — reversible) ───────────────────────
