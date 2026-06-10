@@ -138,10 +138,29 @@ class ToolDispatcher
         // ── [POST_FACEBOOK] ... [/POST_FACEBOOK] ─────────────────────
         if (preg_match_all('/\[POST_FACEBOOK\](.*?)\[\/POST_FACEBOOK\]/si', $text, $matches)) {
             foreach ($matches[1] as $block) {
-                $message = $this->field($block, 'message');
-                $image   = $this->field($block, 'image'); // optional public URL or local path
+                $message     = $this->field($block, 'message');
+                $image       = $this->field($block, 'image');        // optional public URL or local path
+                $imagePrompt = $this->field($block, 'image_prompt'); // optional — generate the image server-side
+
+                // If the agent wants an image but only gave a prompt, generate it
+                // HERE and use the REAL url. (In single-pass chat the agent can't
+                // know the generated URL ahead of time, so it must not guess it.)
+                if (empty($image) && !empty($imagePrompt)) {
+                    log_message('info', "ToolDispatcher: POST_FACEBOOK generating image — {$imagePrompt}");
+                    $gen = $this->image->generate($imagePrompt, '1024x1024');
+                    if (preg_match('/IMAGE_URL:\s*(\S+)/', $gen, $im)) {
+                        $image = trim($im[1]);
+                        if ($this->companyId) {
+                            $this->recordArtifact('image', mb_substr($imagePrompt, 0, 80), $image, 'image/png');
+                        }
+                    } else {
+                        $results[] = $this->wrapResult('POST_FACEBOOK', '⚠ Image generation failed — ' . $gen);
+                        continue;
+                    }
+                }
+
                 if (empty($message) && empty($image)) {
-                    $results[] = $this->wrapResult('POST_FACEBOOK', '⚠ Skipped — "message" (or "image") is required.');
+                    $results[] = $this->wrapResult('POST_FACEBOOK', '⚠ Skipped — "message", "image", or "image_prompt" is required.');
                     continue;
                 }
                 if (!$this->facebook->isConfigured()) {
@@ -989,13 +1008,20 @@ IMPORTANT — how to read the results, so you don't raise false alarms:
 
 ### 📘 Post to Facebook Page
 Publish a post to the company's connected Facebook Page. Use for announcements,
-campaigns, and updates. Add an `image` URL to post a photo with the caption.
-This posts publicly and immediately — only use it when the user clearly asks to post.
+campaigns, and updates. This posts publicly and immediately — only use it when
+the user clearly asks to post.
+
+To post WITH an image, do NOT call GENERATE_IMAGE yourself and do NOT invent an
+image URL. Instead give an `image_prompt` and the system generates the image and
+attaches it for you in one step:
 
 [POST_FACEBOOK]
 message: The text/caption to publish on the Page.
-image: https://optional-public-image-url.jpg
+image_prompt: a calming mental-health themed illustration, soft colors
 [/POST_FACEBOOK]
+
+For text only, omit image_prompt. If you already have a real public image URL
+(e.g. an existing artifact), you may pass `image: https://...` instead.
 
 ### 📧 Send Email
 Send an actual email to any address. Useful for reports, notifications, outreach.

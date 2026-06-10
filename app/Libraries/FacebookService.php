@@ -39,42 +39,29 @@ class FacebookService
         $imageSource = trim($imageSource);
         $endpoint    = "{$this->baseUrl}/{$this->apiVersion}/{$this->pageId}/photos";
 
-        // Prefer uploading the bytes ourselves. Asking Facebook to fetch a URL
-        // is unreliable for freshly-created images (it may 'Missing or invalid
-        // image file' before the file is globally available). Downloading the
-        // bytes and uploading them as a multipart 'source' avoids that race.
-        $tmpFile = null;
-        $localFile = null;
-
-        if (filter_var($imageSource, FILTER_VALIDATE_URL)) {
-            $bytes = $this->download($imageSource);
-            if ($bytes !== null) {
-                $ext     = $this->extFromUrl($imageSource);
-                $tmpFile = tempnam(sys_get_temp_dir(), 'fbimg_') . '.' . $ext;
-                file_put_contents($tmpFile, $bytes);
-                $localFile = $tmpFile;
-            }
-        } elseif (is_file($imageSource)) {
-            $localFile = $imageSource;
-        }
-
         $ch = curl_init($endpoint);
 
-        if ($localFile !== null && is_file($localFile)) {
-            // Multipart upload of the actual image bytes — most reliable.
-            curl_setopt($ch, CURLOPT_POSTFIELDS, [
-                'source'       => new \CURLFile($localFile),
-                'message'      => $message,
-                'access_token' => $this->accessToken,
-            ]);
-        } elseif (filter_var($imageSource, FILTER_VALIDATE_URL)) {
-            // Fallback: let Facebook fetch the URL.
+        if (filter_var($imageSource, FILTER_VALIDATE_URL)) {
+            // A just-generated image may not be globally fetchable yet — wait
+            // until it actually resolves, then let Facebook fetch the URL
+            // (the url method uses the same transport as text posts, which works
+            // reliably; a multipart byte-upload misbehaves in some web contexts).
+            if (!$this->waitUntilAvailable($imageSource)) {
+                return ['ok' => false, 'error' => 'image could not be retrieved (storage not ready / 404): ' . $imageSource];
+            }
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
                 'url'          => $imageSource,
                 'message'      => $message,
                 'access_token' => $this->accessToken,
             ]));
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+        } elseif (is_file($imageSource)) {
+            // Local file on disk — multipart upload of the bytes.
+            curl_setopt($ch, CURLOPT_POSTFIELDS, [
+                'source'       => new \CURLFile($imageSource),
+                'message'      => $message,
+                'access_token' => $this->accessToken,
+            ]);
         } else {
             return ['ok' => false, 'error' => "Image not found or unreadable: {$imageSource}"];
         }
@@ -114,46 +101,38 @@ class FacebookService
     }
 
     /**
-     * Download a URL's bytes via cURL, with retries. A freshly-generated image
-     * (e.g. just uploaded to Supabase Storage) can take a moment to become
-     * fetchable, so we retry a few times before giving up.
-     * Returns null only if all attempts fail.
+     * Confirm an image URL actually resolves to a real image before we ask
+     * Facebook to fetch it. A freshly-generated image (just uploaded to
+     * Supabase Storage) can 404 for a moment, so we retry a few times.
+     * Returns true once it responds 200 with a non-trivial body.
      */
-    private function download(string $url, int $attempts = 4): ?string
+    private function waitUntilAvailable(string $url, int $attempts = 5): bool
     {
         for ($i = 1; $i <= $attempts; $i++) {
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_TIMEOUT        => 30,
-                CURLOPT_SSL_VERIFYPEER => false, // our own image; avoid XAMPP CA-bundle issues
+                CURLOPT_TIMEOUT        => 20,
+                CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_RANGE          => '0-2048', // just need to confirm it exists
                 CURLOPT_USERAGENT      => 'MosbatAI/1.0',
             ]);
             $body = curl_exec($ch);
             $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $err  = curl_error($ch);
             curl_close($ch);
 
-            // A valid image is non-trivial in size; tiny bodies are error JSON.
-            if ($body !== false && $code >= 200 && $code < 300 && strlen($body) > 512) {
-                return $body;
+            if ($body !== false && $code >= 200 && $code < 400 && strlen($body) > 512) {
+                return true;
             }
-            log_message('warning', "FacebookService: image download attempt {$i}/{$attempts} failed "
-                . "[{$code}] {$err} (" . strlen((string) $body) . " bytes) — {$url}");
+            log_message('warning', "FacebookService: image not ready attempt {$i}/{$attempts} "
+                . "[{$code}] (" . strlen((string) $body) . " bytes) — {$url}");
             if ($i < $attempts) {
-                sleep(2); // wait for the just-uploaded object to become available
+                sleep(2);
             }
         }
-        return null;
-    }
-
-    /** Best-effort image extension from a URL path (defaults to jpg). */
-    private function extFromUrl(string $url): string
-    {
-        $ext = strtolower(pathinfo((string) parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true) ? $ext : 'jpg';
+        return false;
     }
 
     /**
