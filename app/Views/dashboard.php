@@ -71,6 +71,9 @@ body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
         radial-gradient(ellipse 800px 500px at 100% 108%, rgba(34,211,238,.03) 0%, transparent 50%),
         var(--bg);
     min-height:100vh;color:var(--t);}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:url('/logos/bg.png') center center / cover no-repeat fixed;
+    opacity:.35;}
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     background-image:
         linear-gradient(rgba(100,116,139,.04) 1px,transparent 1px),
@@ -162,6 +165,19 @@ textarea.inp{resize:vertical;min-height:70px;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(99,102,241,.25);border-radius:5px;}
+
+/* ── Entrance animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ani{opacity:0;animation:fadeUp .55s cubic-bezier(.22,1,.36,1) forwards;}
+.ani-d1{animation-delay:.07s}.ani-d2{animation-delay:.14s}.ani-d3{animation-delay:.21s}
+.ani-d4{animation-delay:.28s}.ani-d5{animation-delay:.35s}.ani-d6{animation-delay:.42s}
+.ani-fade{opacity:0;animation:fadeIn .6s ease forwards;}
+header{opacity:0;animation:slideDown .5s cubic-bezier(.22,1,.36,1) forwards;}
+/* scroll-reveal */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .55s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1);}
+.reveal.in{opacity:1;transform:translateY(0);}
 .hidden{display:none!important;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
@@ -366,7 +382,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 <main class="max-w-7xl mx-auto px-4 sm:px-6 py-7 space-y-7">
 
 <!-- ── WELCOME + METRICS ── -->
-<section class="grid lg:grid-cols-[1.3fr_2fr] gap-5 items-stretch">
+<section class="grid lg:grid-cols-[1.3fr_2fr] gap-5 items-stretch ani ani-d1">
 
     <!-- Welcome / Chairman -->
     <div class="glass rounded-2xl p-6 flex items-center gap-4 relative overflow-hidden">
@@ -379,7 +395,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
         <div class="hex flex-shrink-0 grid place-items-center font-bold text-xl gt relative" style="width:60px;height:68px;background:linear-gradient(135deg,rgba(99,102,241,.22),rgba(79,70,229,.12));"><?= esc($chairman['initials']) ?></div>
         <?php endif; ?>
         <div class="relative">
-            <div id="greeting-label" class="mono text-[9px] tracking-[.2em] uppercase mb-1" style="color:var(--m);"><?= $greeting ?></div>
+            <div id="greeting-label" class="mono text-[9px] tracking-[.2em] uppercase mb-1 flex items-center gap-2" style="color:var(--m);"><?= $greeting ?> <span id="hq-clock" style="color:rgba(99,102,241,.7);letter-spacing:.12em;"></span></div>
             <h1 class="text-xl font-bold tracking-tight" style="color:var(--t);">Chairman <?= esc($chairman['name']) ?></h1>
             <div class="text-sm mt-0.5" style="color:var(--t2);"><?= esc($chairman['title']) ?></div>
         </div>
@@ -394,19 +410,19 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
         </div>
         <div class="tile">
             <svg class="tile-ico" width="20" height="20" style="color:#2090e8;opacity:0.35;"><use href="#i-bot"/></svg>
-            <div class="tile-val" style="color:#ffffff;"><?= $totalAgents ?></div>
+            <div class="tile-val" style="color:#3b82f6;"><?= $totalAgents ?></div>
             <div class="tile-lbl">Total Agents</div>
         </div>
         <div class="tile">
             <svg class="tile-ico" width="20" height="20" style="color:var(--g);"><use href="#i-activity"/></svg>
-            <div class="tile-val" style="color:#22d3ee;"><?= $activeAgentsTotal ?></div>
+            <div class="tile-val" style="color:#22c55e;"><?= $activeAgentsTotal ?></div>
             <div class="tile-lbl">Active Agents</div>
         </div>
     </div>
 </section>
 
 <!-- ── QUICK COMMAND ── -->
-<section class="glass rounded-2xl overflow-hidden">
+<section class="glass rounded-2xl overflow-hidden ani ani-d2">
     <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid var(--b);">
         <div class="flex items-center gap-2.5">
             <svg width="15" height="15" style="color:var(--c);flex-shrink:0;"><use href="#i-zap"/></svg>
@@ -440,7 +456,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 </section>
 
 <!-- ── PORTFOLIO ── -->
-<section>
+<section class="ani ani-d3">
     <div class="sl mb-4">Portfolio<span style="flex:0;"></span></div>
     <div class="grid sm:grid-cols-2 gap-4">
         <?php foreach ($companies as $company): ?>
@@ -464,7 +480,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
                             <?php if ($isMock): ?>
                             <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.22);color:#818cf8;">Demo</span>
                             <?php else: ?>
-                            <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded gtg" style="background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.20);">Live</span>
+                            <span class="mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded" style="background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.35);color:#22d3ee;">Live</span>
                             <?php endif; ?>
                         </div>
                         <p class="text-xs" style="color:var(--m);line-height:1.5;"><?= esc($company['description']) ?></p>
@@ -492,10 +508,18 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 </section>
 
 <!-- ── ORGANIZATION CHART ── -->
-<section>
-    <div class="sl mb-4">Organization<span style="flex:0;"></span></div>
-    <div class="glass rounded-2xl p-5 overflow-x-auto">
-        <div id="org-tree"></div>
+<section class="reveal">
+    <div class="flex items-center justify-between mb-4">
+        <div class="sl" style="flex:1;">Organization</div>
+        <div class="flex items-center gap-1 ml-3" id="hq-zoom-btns">
+            <button onclick="hqZoom(-0.15)" title="Zoom out" style="background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.22);color:#818cf8;border-radius:7px;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseenter="this.style.background='rgba(99,102,241,.22)'" onmouseleave="this.style.background='rgba(99,102,241,.10)'">−</button>
+            <span id="hq-zoom-label" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--m);min-width:38px;text-align:center;">100%</span>
+            <button onclick="hqZoom(0.15)" title="Zoom in" style="background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.22);color:#818cf8;border-radius:7px;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseenter="this.style.background='rgba(99,102,241,.22)'" onmouseleave="this.style.background='rgba(99,102,241,.10)'">+</button>
+            <button onclick="hqZoomReset()" title="Reset zoom" style="background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.22);color:#818cf8;border-radius:7px;padding:0 8px;height:28px;font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .15s;" onmouseenter="this.style.background='rgba(99,102,241,.22)'" onmouseleave="this.style.background='rgba(99,102,241,.10)'">Reset</button>
+        </div>
+    </div>
+    <div class="glass rounded-2xl p-5 overflow-auto" style="cursor:grab;" id="hq-org-wrap">
+        <div id="org-tree" style="transform-origin:top center;transition:transform .2s ease;"></div>
     </div>
 </section>
 
@@ -754,15 +778,52 @@ async function quickSend(){
 </script>
 <script>
 (function(){
-    function updateGreeting(){
-        var h = new Date().getHours();
-        var label = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
-        var el = document.getElementById('greeting-label');
-        if(el) el.textContent = label;
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function tick(){
+        var now = new Date();
+        var h = now.getHours();
+        // Update greeting text node (first child)
+        var greet = document.getElementById('greeting-label');
+        if(greet && greet.childNodes[0]){
+            var label = h < 12 ? 'GOOD MORNING' : h < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
+            greet.childNodes[0].textContent = label + ' ';
+        }
+        // Update clock
+        var clock = document.getElementById('hq-clock');
+        if(clock){
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            var h12  = h % 12 || 12;
+            clock.textContent = pad(h12) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()) + ' ' + ampm;
+        }
     }
-    updateGreeting();
-    setInterval(updateGreeting, 60000);
+    tick();
+    setInterval(tick, 1000);
 })();
+</script>
+<script>
+// ── Org chart zoom (dashboard) ──
+let hqScale = 1;
+function hqZoom(delta){
+    hqScale = Math.min(2, Math.max(0.3, hqScale + delta));
+    document.getElementById('org-tree').style.transform = `scale(${hqScale})`;
+    document.getElementById('hq-zoom-label').textContent = Math.round(hqScale*100)+'%';
+}
+function hqZoomReset(){ hqScale=1; document.getElementById('org-tree').style.transform='scale(1)'; document.getElementById('hq-zoom-label').textContent='100%'; }
+const _hqWrap = document.getElementById('hq-org-wrap');
+if(_hqWrap){
+    _hqWrap.addEventListener('wheel', e=>{ if(e.ctrlKey||e.metaKey){ e.preventDefault(); hqZoom(e.deltaY < 0 ? 0.1 : -0.1); } }, {passive:false});
+    // Drag to pan
+    let _hqDrag=false, _hqX=0, _hqY=0;
+    _hqWrap.addEventListener('mousedown', e=>{ _hqDrag=true; _hqX=e.clientX+_hqWrap.scrollLeft; _hqY=e.clientY+_hqWrap.scrollTop; _hqWrap.style.cursor='grabbing'; e.preventDefault(); });
+    window.addEventListener('mousemove', e=>{ if(!_hqDrag) return; _hqWrap.scrollLeft=_hqX-e.clientX; _hqWrap.scrollTop=_hqY-e.clientY; });
+    window.addEventListener('mouseup', ()=>{ _hqDrag=false; _hqWrap.style.cursor='grab'; });
+}
+
+// Scroll-reveal observer
+const _ro = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); _ro.unobserve(e.target); } });
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>_ro.observe(el));
 </script>
 </body>
 </html>

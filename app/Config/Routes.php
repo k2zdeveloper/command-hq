@@ -20,10 +20,12 @@ $routes = Services::routes();
  */
 $routes->get('/',                         'Dashboard::index');
 $routes->get('company/(:segment)',        'Dashboard::company/$1');
+$routes->get('file/(:any)',               'Dashboard::serveFile');
 
 $routes->group('api', ['namespace' => 'App\Controllers'], static function ($routes) {
     $routes->post('chat',                 'ChatApi::send');
     $routes->post('chat/stream',          'ChatApi::stream');
+    $routes->post('chat/delete-turn',     'ChatApi::deleteTurn');
     $routes->get('history/(:segment)',    'ChatApi::history/$1');
     $routes->get('org',                   'ChatApi::org');
     $routes->get('reports/(:segment)',    'ChatApi::reports/$1');

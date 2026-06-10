@@ -28,17 +28,22 @@ class Dashboard extends BaseController
                 'agents'      => $supabase->getOrg('positive_nation'),
             ],
             [
-                'id'          => 'positive_force_media',
-                'name'        => 'Positive Force Media',
-                'description' => 'Digital media and content amplification. Broadcasting positive narratives at scale.',
+                'id'          => 'k2z_digital',
+                'name'        => 'K2Z Digital',
+                'description' => 'Digital strategy, marketing, and technology solutions.',
                 'status'      => 'active',
-                'mock'        => true,
-                'agents'      => [
-                    ['id' => 'pfm-001', 'slug' => 'pfm-director',   'name' => 'Director',        'role_title' => 'Creative Director',    'parent_id' => null,      'is_active' => true ],
-                    ['id' => 'pfm-002', 'slug' => 'pfm-content',    'name' => 'Content Agent',   'role_title' => 'Content Strategist',   'parent_id' => 'pfm-001', 'is_active' => true ],
-                    ['id' => 'pfm-003', 'slug' => 'pfm-social',     'name' => 'Social Agent',    'role_title' => 'Social Media Manager', 'parent_id' => 'pfm-001', 'is_active' => false],
-                    ['id' => 'pfm-004', 'slug' => 'pfm-analytics',  'name' => 'Analytics Agent', 'role_title' => 'Data Analyst',         'parent_id' => 'pfm-001', 'is_active' => true ],
-                ],
+                'mock'        => false,
+                'logo'        => '/logos/k2z-digital.png',
+                'agents'      => $supabase->getOrg('k2z_digital'),
+            ],
+            [
+                'id'          => 'zengit',
+                'name'        => 'Zengit',
+                'description' => 'Powering growth through technology and innovation.',
+                'status'      => 'active',
+                'mock'        => false,
+                'logo'        => '/logos/zengit.png',
+                'agents'      => $supabase->getOrg('zengit'),
             ],
         ];
 
@@ -63,11 +68,19 @@ class Dashboard extends BaseController
                 'mock'        => false,
                 'logo'        => '/logos/positive-nation.svg',
             ],
-            'positive_force_media' => [
-                'id'          => 'positive_force_media',
-                'name'        => 'Positive Force Media',
-                'description' => 'Digital media and content amplification. Broadcasting positive narratives at scale.',
-                'mock'        => true,
+            'k2z_digital' => [
+                'id'          => 'k2z_digital',
+                'name'        => 'K2Z Digital',
+                'description' => 'Digital strategy, marketing, and technology solutions.',
+                'mock'        => false,
+                'logo'        => '/logos/k2z-digital.png',
+            ],
+            'zengit' => [
+                'id'          => 'zengit',
+                'name'        => 'Zengit',
+                'description' => 'Powering growth through technology and innovation.',
+                'mock'        => false,
+                'logo'        => '/logos/zengit.png',
             ],
         ];
 
@@ -77,16 +90,7 @@ class Dashboard extends BaseController
 
         $company = $map[$id];
 
-        if ($company['mock']) {
-            $agents = [
-                ['id' => 'pfm-001', 'slug' => 'pfm-director',  'name' => 'Director',        'role_title' => 'Creative Director',    'parent_id' => null,      'is_active' => true,  'model' => 'claude-sonnet-4-6',        'temperature' => 0.7, 'system_prompt' => 'You are the Creative Director of Positive Force Media, leading a digital media company focused on positive content amplification. Your team includes a Content Strategist, Social Media Manager, and Data Analyst.'],
-                ['id' => 'pfm-002', 'slug' => 'pfm-content',   'name' => 'Content Agent',   'role_title' => 'Content Strategist',   'parent_id' => 'pfm-001', 'is_active' => true,  'model' => 'claude-sonnet-4-6',        'temperature' => 0.8, 'system_prompt' => 'You are the Content Strategist for Positive Force Media, responsible for ideating and producing compelling positive content.'],
-                ['id' => 'pfm-003', 'slug' => 'pfm-social',    'name' => 'Social Agent',    'role_title' => 'Social Media Manager', 'parent_id' => 'pfm-001', 'is_active' => false, 'model' => 'claude-haiku-4-5-20251001', 'temperature' => 0.8, 'system_prompt' => 'You are the Social Media Manager for Positive Force Media.'],
-                ['id' => 'pfm-004', 'slug' => 'pfm-analytics', 'name' => 'Analytics Agent', 'role_title' => 'Data Analyst',         'parent_id' => 'pfm-001', 'is_active' => true,  'model' => 'claude-haiku-4-5-20251001', 'temperature' => 0.3, 'system_prompt' => 'You are the Data Analyst for Positive Force Media, responsible for tracking and reporting on content performance metrics.'],
-            ];
-        } else {
-            $agents = $supabase->getCompanyAgents($id);
-        }
+        $agents = $supabase->getCompanyAgents($id);
 
         $root = null;
         foreach ($agents as $a) {
@@ -109,5 +113,57 @@ class Dashboard extends BaseController
             'root'     => $root,
             'chairman' => $chairman,
         ]);
+    }
+
+    /**
+     * Serve a file from public/generated/ with explicit Content-Type headers.
+     * Using a PHP controller guarantees correct MIME regardless of web server
+     * configuration (Supabase, nginx, PHP built-in server all behave differently).
+     */
+    public function serveFile(): \CodeIgniter\HTTP\ResponseInterface
+    {
+        // Read the URI directly — CI4 route capture loses slashes when $1 is passed
+        // to the method, so we parse /file/{company}/{filename} from the raw path.
+        $uriPath = $this->request->getUri()->getPath();        // e.g. /file/k2z_digital/foo.html
+        $relative = ltrim(preg_replace('#^/file/#', '', $uriPath), '/'); // k2z_digital/foo.html
+
+        // Split into at most 2 segments: company + filename
+        $parts = explode('/', $relative, 2);
+        if (count($parts) === 2 && $parts[1] !== '') {
+            $company = preg_replace('/[^a-zA-Z0-9_\-]/', '', $parts[0]);
+            $name    = basename($parts[1]);
+            $path    = FCPATH . 'generated' . DIRECTORY_SEPARATOR . $company . DIRECTORY_SEPARATOR . $name;
+        } else {
+            $name = basename($parts[0]);
+            $path = FCPATH . 'generated' . DIRECTORY_SEPARATOR . $name;
+        }
+
+        if (!file_exists($path) || !is_readable($path)) {
+            return $this->response->setStatusCode(404)->setBody('File not found.');
+        }
+
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $mimes = [
+            'html' => 'text/html; charset=UTF-8',
+            'htm'  => 'text/html; charset=UTF-8',
+            'css'  => 'text/css; charset=UTF-8',
+            'js'   => 'application/javascript; charset=UTF-8',
+            'json' => 'application/json; charset=UTF-8',
+            'svg'  => 'image/svg+xml',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'txt'  => 'text/plain; charset=UTF-8',
+            'csv'  => 'text/csv; charset=UTF-8',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'pdf'  => 'application/pdf',
+        ];
+        $mime = $mimes[$ext] ?? 'application/octet-stream';
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('X-Content-Type-Options', 'nosniff')
+            ->setBody(file_get_contents($path));
     }
 }

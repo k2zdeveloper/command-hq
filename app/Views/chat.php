@@ -31,6 +31,9 @@ body {
     color:var(--text);
     display:flex; flex-direction:column;
 }
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:url('/logos/bg.png') center center / cover no-repeat fixed;
+    opacity:.10;}
 body::before {
     content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
     background-image:
@@ -105,6 +108,15 @@ header,.body-wrap,.composer,.skills-panel,#skill-modal { position:relative; z-in
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(0,190,255,.15);border-radius:4px;}
+
+/* ── Entrance animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+header{opacity:0;animation:slideDown .5s cubic-bezier(.22,1,.36,1) forwards;}
+.body-wrap{opacity:0;animation:fadeUp .55s cubic-bezier(.22,1,.36,1) .1s forwards;}
+#sk-panel{opacity:0;animation:slideRight .5s cubic-bezier(.22,1,.36,1) .15s forwards;}
+.composer{opacity:0;animation:fadeUp .45s cubic-bezier(.22,1,.36,1) .2s forwards;}
 </style>
 </head>
 <body>
@@ -190,9 +202,32 @@ header,.body-wrap,.composer,.skills-panel,#skill-modal { position:relative; z-in
 
         <!-- Composer -->
         <div class="composer glass flex-shrink-0 px-3 py-3" style="border-top:1px solid rgba(0,190,255,.07);padding-bottom:max(.75rem,env(safe-area-inset-bottom));">
+            <!-- Image preview strip -->
+            <div id="img-preview-wrap" style="display:none;" class="max-w-2xl mx-auto mb-2">
+                <div class="flex items-center gap-3 px-3 py-2 rounded-xl" style="background:rgba(0,20,40,.7);border:1px solid rgba(0,200,240,.2);">
+                    <img id="img-thumb" src="" alt="" style="height:44px;width:auto;max-width:72px;border-radius:7px;object-fit:cover;border:1px solid rgba(0,190,255,.2);">
+                    <div class="flex-1 min-w-0">
+                        <div id="img-fname" class="text-xs truncate" style="color:#c8e0f0;"></div>
+                        <div id="img-fsize" class="mono text-[9px] mt-0.5" style="color:var(--muted);"></div>
+                    </div>
+                    <button type="button" onclick="clearImage()" title="Remove image"
+                        style="color:rgba(248,113,113,.6);background:none;border:none;cursor:pointer;padding:4px 6px;font-size:15px;flex-shrink:0;transition:color .15s;"
+                        onmouseenter="this.style.color='#f87171'" onmouseleave="this.style.color='rgba(248,113,113,.6)'">✕</button>
+                </div>
+            </div>
             <form id="frm" class="max-w-2xl mx-auto flex items-end gap-2">
+                <input type="file" id="img-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+                <button type="button" id="img-btn" onclick="document.getElementById('img-input').click()" title="Attach image (or paste from clipboard)"
+                    class="flex-shrink-0 rounded-xl transition-all"
+                    style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(0,10,22,.8);border:1px solid rgba(0,190,255,.12);color:var(--muted);"
+                    onmouseenter="if(!window.imgAttached){this.style.borderColor='rgba(0,190,255,.35)';this.style.color='#00c8f0';}"
+                    onmouseleave="if(!window.imgAttached){this.style.borderColor='rgba(0,190,255,.12)';this.style.color='var(--muted)';}">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                </button>
                 <textarea id="inp" rows="1"
-                    placeholder="Message <?= esc($agent['name']) ?>…"
+                    placeholder="Message <?= esc($agent['name']) ?>… (or paste an image)"
                     class="flex-1 resize-none rounded-xl px-4 py-2.5 text-sm focus:outline-none max-h-40"
                     style="background:rgba(0,10,22,.8);border:1px solid rgba(0,190,255,.12);color:#c8e0f0;transition:border-color .15s;"
                     onfocus="this.style.borderColor='rgba(0,200,240,.35)'"
@@ -287,14 +322,43 @@ function md(t) {
         .replace(/\n{2,}/g,'</p><p style="margin-bottom:.35rem;">')
         .replace(/\n/g,'<br>');
 }
-function bubble(role, text) {
+function bubble(role, text, turnId=null) {
     const isU = role === 'user';
     const w = document.createElement('div');
-    w.className = 'flex ' + (isU ? 'justify-end' : 'justify-start');
-    w.innerHTML = `<div class="${isU?'b-user':'b-bot'} px-4 py-3 text-sm leading-relaxed" style="max-width:87%;"><p style="margin-bottom:.35rem;">${md(text)}</p></div>`;
+    w.className += ' chat-bubble';
+    if(turnId) w.dataset.turnId = turnId;
+    const delU = `<button onclick="deleteTurnBubble(this)" title="Delete" style="opacity:0;color:rgba(0,200,240,.45);background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:3px 5px;transition:opacity .15s,color .15s;flex-shrink:0;" onmouseenter="this.style.color='#f87171'" onmouseleave="this.style.color='rgba(0,200,240,.45)'">✕</button>`;
+    const delB = `<button onclick="deleteTurnBubble(this)" title="Delete" style="color:rgba(0,200,240,.35);background:rgba(0,10,22,.5);border:1px solid rgba(0,200,240,.12);border-radius:4px;cursor:pointer;font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;transition:all .15s;" onmouseenter="this.style.color='#f87171';this.style.borderColor='rgba(248,113,113,.3)'" onmouseleave="this.style.color='rgba(0,200,240,.35)';this.style.borderColor='rgba(0,200,240,.12)'">✕ Del</button>`;
+    if(isU){
+        w.className='flex justify-end items-start gap-1 chat-bubble';
+        w.innerHTML=`${delU}<div class="b-user px-4 py-3 text-sm leading-relaxed" style="max-width:87%;"
+            onmouseenter="this.previousElementSibling.style.opacity='1'"
+            onmouseleave="this.previousElementSibling.style.opacity='0'"><p style="margin-bottom:.35rem;">${md(text)}</p></div>`;
+    } else {
+        w.className='flex justify-start flex-col gap-1 chat-bubble';
+        w.innerHTML=`<div class="b-bot px-4 py-3 text-sm leading-relaxed" style="max-width:87%;"><p style="margin-bottom:.35rem;">${md(text)}</p></div>
+        <div style="padding-left:.25rem;">${delB}</div>`;
+    }
     innerEl.appendChild(w);
     msgsEl.scrollTop = msgsEl.scrollHeight;
     return w;
+}
+
+async function deleteTurnBubble(btn){
+    const wrap = btn.closest('.chat-bubble');
+    if(!wrap) return;
+    const turnId = wrap.dataset.turnId;
+    btn.disabled = true;
+    wrap.style.transition = 'opacity .2s';
+    wrap.style.opacity = '.35';
+    if(turnId){
+        try{
+            const r = await fetch('/api/chat/delete-turn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:turnId})});
+            const d = await r.json();
+            if(!d.ok){ wrap.style.opacity='1'; btn.disabled=false; return; }
+        }catch(_){ wrap.style.opacity='1'; btn.disabled=false; return; }
+    }
+    setTimeout(()=>wrap.remove(), 200);
 }
 function typing() {
     const w = document.createElement('div');
@@ -309,13 +373,60 @@ function typing() {
 inp.addEventListener('input',()=>{ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,160)+'px'; });
 inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();frm.requestSubmit();} });
 
+// ── image upload & paste ──────────────────────────────────────────────────
+window.imgAttached = null; // {base64, mime, name, dataUrl}
+const imgInput = document.getElementById('img-input');
+const imgBtn   = document.getElementById('img-btn');
+
+function setImgAttached(file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { alert('Image too large — max 4 MB.'); return; }
+    const validTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+    if (!validTypes.includes(file.type)) { alert('Unsupported format. Use JPEG, PNG, GIF, or WebP.'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const dataUrl = e.target.result;
+        window.imgAttached = { base64: dataUrl.split(',')[1], mime: file.type, name: file.name, dataUrl };
+        document.getElementById('img-thumb').src = dataUrl;
+        document.getElementById('img-fname').textContent = file.name || 'Pasted image';
+        document.getElementById('img-fsize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('img-preview-wrap').style.display = '';
+        imgBtn.style.borderColor = 'rgba(0,200,240,.5)';
+        imgBtn.style.color = '#00c8f0';
+    };
+    reader.readAsDataURL(file);
+}
+
+imgInput.addEventListener('change', () => { setImgAttached(imgInput.files[0]); imgInput.value=''; });
+
+// Paste image from clipboard (e.g. screenshot Ctrl+V into the textarea)
+inp.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            setImgAttached(item.getAsFile());
+            return;
+        }
+    }
+});
+
+function clearImage() {
+    window.imgAttached = null;
+    document.getElementById('img-thumb').src = '';
+    document.getElementById('img-preview-wrap').style.display = 'none';
+    imgBtn.style.borderColor = 'rgba(0,190,255,.12)';
+    imgBtn.style.color = 'var(--muted)';
+}
+
 // ── load history ─────────────────────────────────────────────────────────
 (async()=>{
     try {
         const r = await fetch(`/api/history/${encodeURIComponent(SLUG)}`);
         const d = await r.json();
         loaderEl.remove();
-        if(d.ok && d.turns?.length) d.turns.forEach(t=>bubble(t.role,t.content));
+        if(d.ok && d.turns?.length) d.turns.forEach(t=>bubble(t.role,t.content,t.id));
         else bubble('assistant',`Hi — I'm ${ANAME}. How can I help?`);
     } catch(_){ loaderEl.textContent='// Could not load history.'; }
 })();
@@ -323,13 +434,36 @@ inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDe
 // ── send ─────────────────────────────────────────────────────────────────
 frm.addEventListener('submit', async e => {
     e.preventDefault();
-    const txt = inp.value.trim(); if(!txt) return;
-    snd.disabled=true; inp.value=''; inp.style.height='auto';
-    bubble('user',txt); const t=typing();
+    const txt = inp.value.trim();
+    if (!txt && !window.imgAttached) return;
+    snd.disabled = true; inp.value = ''; inp.style.height = 'auto';
+
+    // Show user bubble
+    const displayTxt = txt || '📷 (image)';
+    const userWrap = bubble('user', displayTxt);
+
+    // Append image thumbnail inside the user bubble
+    if (window.imgAttached) {
+        const imgEl = document.createElement('img');
+        imgEl.src = window.imgAttached.dataUrl;
+        imgEl.style.cssText = 'max-width:200px;max-height:150px;border-radius:10px;object-fit:cover;border:1px solid rgba(0,190,255,.2);margin-top:6px;display:block;';
+        const bub = userWrap.querySelector('.b-user');
+        if (bub) bub.appendChild(imgEl);
+    }
+
+    const payload = { slug: SLUG, message: txt || 'Please analyze this image.' };
+    if (window.imgAttached) { payload.imageData = window.imgAttached.base64; payload.imageMime = window.imgAttached.mime; }
+    clearImage();
+
+    const t = typing();
     try {
-        const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:SLUG,message:txt})});
+        const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const d = await r.json(); t.remove();
-        bubble('assistant', d.ok ? d.reply : '⚠ '+(d.error||'Error.'));
+        const aWrap = bubble('assistant', d.ok ? d.reply : '⚠ '+(d.error||'Error.'));
+        if(d.ok && d.turn_ids){
+            if(d.turn_ids.user)      userWrap.dataset.turnId = d.turn_ids.user;
+            if(d.turn_ids.assistant) aWrap.dataset.turnId    = d.turn_ids.assistant;
+        }
     } catch(_){ t.remove(); bubble('assistant','⚠ Network error.'); }
     finally { snd.disabled=false; inp.focus(); }
 });

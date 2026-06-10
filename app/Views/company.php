@@ -34,6 +34,9 @@ body{
         radial-gradient(ellipse 900px 500px at 100% 110%,rgba(34,211,238,.03) 0%,transparent 50%),#020617;
     color:var(--t);display:flex;flex-direction:column;
 }
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:url('/logos/bg.png') center center / cover no-repeat fixed;
+    opacity:.35;}
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     background-image:
         linear-gradient(rgba(100,116,139,.04) 1px,transparent 1px),
@@ -171,6 +174,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(99,102,241,.25);border-radius:4px;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5)}70%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
+#mic-btn.recording{background:rgba(239,68,68,.18)!important;border-color:rgba(239,68,68,.55)!important;color:#f87171!important;animation:micPulse 1.2s ease-in-out infinite;}
+
+/* ── Entrance animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ani{opacity:0;animation:fadeUp .55s cubic-bezier(.22,1,.36,1) forwards;}
+.ani-d1{animation-delay:.06s}.ani-d2{animation-delay:.13s}.ani-d3{animation-delay:.20s}
+.ani-d4{animation-delay:.27s}.ani-d5{animation-delay:.34s}
+header{opacity:0;animation:slideDown .5s cubic-bezier(.22,1,.36,1) forwards;}
+nav.sidebar{opacity:0;animation:slideLeft .5s cubic-bezier(.22,1,.36,1) .08s forwards;}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1);}
+.reveal.in{opacity:1;transform:translateY(0);}
 
 /* ── Top-down org chart (flowchart) ── */
 .orgchart{text-align:center;min-width:max-content;padding:8px 4px 16px;}
@@ -308,6 +326,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4.5" width="10" height="7" rx="1.5"/><rect x="4" y="11.5" width="16" height="8" rx="2"/><line x1="12" y1="2" x2="12" y2="4.5"/><circle cx="12" cy="1.5" r="1" fill="currentColor" stroke="none"/><circle cx="9.5" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.5" cy="8" r="1.2" fill="currentColor" stroke="none"/><path d="M9 16h6M4 15H2M22 15h-2"/></symbol>
 <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
 <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></symbol>
 <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
 </defs></svg>
@@ -368,6 +387,28 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
                 <button onclick="closeHireModal()" class="btn btn-ghost btn-sm">Cancel</button>
                 <button id="hire-submit" onclick="submitHireAgent()" class="btn btn-cyan btn-sm"><svg width="11" height="11"><use href="#i-plus"/></svg>Hire Agent</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════ INBOX MESSAGE MODAL ════════ -->
+<div id="im-modal" class="modal-wrap" onclick="if(event.target===this)closeInboxMessage()">
+    <div class="modal-bkg" onclick="closeInboxMessage()"></div>
+    <div class="modal-box glass3" style="max-width:620px;">
+        <div class="px-5 py-4 flex items-center gap-3 h-accent relative" style="border-bottom:1px solid rgba(100,116,139,.12);">
+            <div class="hex grid place-items-center font-bold flex-shrink-0" id="im-initials" style="width:34px;height:39px;font-size:.75rem;background:linear-gradient(135deg,rgba(232,180,84,.22),rgba(200,144,80,.18));color:#e8b454;"></div>
+            <div class="flex-1 min-w-0">
+                <div class="font-semibold gt truncate" id="im-agent" style="font-size:.9rem;"></div>
+                <div class="mono text-[9px]" id="im-ts" style="color:var(--m);"></div>
+            </div>
+            <button onclick="closeInboxMessage()" class="p-1.5 rounded-lg hover:bg-white/5 flex-shrink-0" style="color:var(--m);border:none;background:none;cursor:pointer;">
+                <svg width="15" height="15"><use href="#i-x"/></svg>
+            </button>
+        </div>
+        <div id="im-body" class="p-5 text-sm overflow-y-auto" style="max-height:62vh;color:#ece6da;line-height:1.7;"></div>
+        <div class="px-5 py-3 flex justify-end gap-2" style="border-top:1px solid rgba(100,116,139,.10);">
+            <button id="im-goto-btn" onclick="inboxGoToChat()" class="btn btn-violet btn-sm" style="display:none;">Go to Chat</button>
+            <button onclick="closeInboxMessage()" class="btn btn-ghost btn-sm">Close</button>
         </div>
     </div>
 </div>
@@ -494,7 +535,7 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
 <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
 <!-- ══ SECTION: CHAT ══ -->
-<div id="s-chat" class="section active">
+<div id="s-chat" class="section active ani ani-d2">
     <!-- Channel header -->
     <div class="px-4 py-2 flex items-center justify-between flex-shrink-0" style="border-bottom:1px solid rgba(235,225,200,.06);background:rgba(14,12,9,.4);">
         <div class="flex items-center gap-2">
@@ -525,13 +566,39 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
         <?php elseif (!$root): ?>
         <div class="max-w-3xl mx-auto mono text-xs text-center py-3" style="color:var(--m);">// No director agent configured.</div>
         <?php else: ?>
+        <!-- Image preview strip (hidden until image attached) -->
+        <div id="img-preview-wrap" style="display:none;" class="max-w-3xl mx-auto mb-2">
+            <div class="flex items-center gap-3 px-3 py-2 rounded-xl" style="background:rgba(16,14,11,.8);border:1px solid rgba(232,180,84,.25);">
+                <img id="img-thumb" src="" alt="" style="height:44px;width:auto;max-width:72px;border-radius:7px;object-fit:cover;border:1px solid rgba(232,180,84,.2);">
+                <div class="flex-1 min-w-0">
+                    <div id="img-fname" class="text-xs truncate" style="color:#ece6da;"></div>
+                    <div id="img-fsize" class="mono text-[9px] mt-0.5" style="color:var(--m);"></div>
+                </div>
+                <button type="button" onclick="clearImage()" title="Remove image"
+                    style="color:rgba(248,113,113,.6);background:none;border:none;cursor:pointer;padding:4px 6px;font-size:15px;flex-shrink:0;transition:color .15s;"
+                    onmouseenter="this.style.color='#f87171'" onmouseleave="this.style.color='rgba(248,113,113,.6)'">✕</button>
+            </div>
+        </div>
         <form id="frm" class="max-w-3xl mx-auto flex items-end gap-2">
+            <input type="file" id="img-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+            <button type="button" id="img-btn" onclick="document.getElementById('img-input').click()" title="Attach image (or paste from clipboard)"
+                class="flex-shrink-0 grid place-items-center rounded-xl transition-all duration-200"
+                style="width:42px;height:42px;background:rgba(232,180,84,.08);border:1px solid rgba(232,180,84,.22);color:rgba(232,180,84,.6);cursor:pointer;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </button>
             <textarea id="inp" rows="1"
                 placeholder="Issue a command to <?= esc($company['name']) ?>…"
                 class="flex-1 resize-none rounded-xl px-4 py-2.5 text-sm focus:outline-none max-h-36"
                 style="background:rgba(16,14,11,.8);border:1px solid rgba(235,225,200,.12);color:#ece6da;transition:border-color .15s;"
                 onfocus="this.style.borderColor='rgba(232,180,84,.35)'"
                 onblur="this.style.borderColor='rgba(235,225,200,.12)'"></textarea>
+            <button id="mic-btn" type="button" title="Voice command" onclick="toggleVoice()"
+                class="flex-shrink-0 grid place-items-center rounded-xl transition-all duration-200"
+                style="width:42px;height:42px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.28);color:#818cf8;cursor:pointer;">
+                <svg width="16" height="16"><use href="#i-mic"/></svg>
+            </button>
             <button id="snd" type="submit" class="btn btn-cyan px-4 py-2.5 flex-shrink-0" style="font-size:.85rem;">
                 <svg width="12" height="12"><use href="#i-send"/></svg>Send
             </button>
@@ -756,9 +823,15 @@ li.collapsed > .ocard .octog .chev{transform:rotate(-90deg);}
             <p class="mono text-[9px]" style="color:var(--m);">Reporting hierarchy · click an agent to open it</p>
         </div>
         <span class="mono text-[9px]" id="org-count" style="color:var(--m);"></span>
+        <div class="flex items-center gap-1">
+            <button onclick="coZoom(-0.15)" title="Zoom out" style="background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.22);color:#818cf8;border-radius:7px;width:26px;height:26px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseenter="this.style.background='rgba(99,102,241,.22)'" onmouseleave="this.style.background='rgba(99,102,241,.10)'">−</button>
+            <span id="co-zoom-label" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--m);min-width:36px;text-align:center;">100%</span>
+            <button onclick="coZoom(0.15)" title="Zoom in" style="background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.22);color:#818cf8;border-radius:7px;width:26px;height:26px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseenter="this.style.background='rgba(99,102,241,.22)'" onmouseleave="this.style.background='rgba(99,102,241,.10)'">+</button>
+            <button onclick="coZoomReset()" style="background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.22);color:#818cf8;border-radius:7px;padding:0 7px;height:26px;font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='rgba(99,102,241,.22)'" onmouseleave="this.style.background='rgba(99,102,241,.10)'">Reset</button>
+        </div>
     </div>
-    <div class="flex-1 overflow-auto p-5">
-        <div id="org-tree"></div>
+    <div class="flex-1 overflow-auto p-5" id="co-org-wrap">
+        <div id="org-tree" style="transform-origin:top center;transition:transform .2s ease;"></div>
     </div>
 </div><!-- /s-org -->
 
@@ -877,6 +950,17 @@ function renderToolBlock(tag, content){
             +'<div style="font-size:.7rem;font-family:\'JetBrains Mono\',monospace;color:rgba(232,180,84,.8);margin-bottom:.2rem;">📄 GENERATE DOCUMENT</div>'
             +'<div style="font-size:.8rem;color:#ece6da;">'+h(dtitle)+'</div></div>';
     }
+    if(tag === 'GENERATE_FILE'){
+        var fname = extractField(content,'filename');
+        // data-gen-file lets the tool_result handler inject the link once the file is saved
+        return '<div data-gen-file="'+h(fname)+'" style="margin:.5rem 0;padding:.5rem .75rem;background:rgba(61,214,140,.06);border:1px solid rgba(61,214,140,.2);border-radius:10px;display:flex;align-items:center;gap:.5rem;">'
+            +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(61,214,140,.8)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>'
+            +'<div style="flex:1;">'
+            +'<div style="font-size:.7rem;font-family:\'JetBrains Mono\',monospace;color:rgba(61,214,140,.7);margin-bottom:.1rem;">💾 SAVING FILE…</div>'
+            +'<div style="font-size:.8rem;color:#ece6da;font-family:\'JetBrains Mono\',monospace;">'+h(fname)+'</div>'
+            +'<div class="gen-file-link" style="margin-top:.3rem;"></div>'
+            +'</div></div>';
+    }
     // Unknown tool — show as code block
     return '<div style="margin:.5rem 0;padding:.5rem .75rem;background:rgba(16,14,11,.7);border:1px solid rgba(235,225,200,.1);border-radius:8px;font-family:\'JetBrains Mono\',monospace;font-size:.75rem;color:rgba(232,180,84,.7);">['+tag+']</div>';
 }
@@ -884,7 +968,7 @@ function renderToolBlock(tag, content){
 function md(raw){
     if(!raw) return '';
     // ── Render tool call blocks BEFORE HTML escaping ─────────────────────
-    var processed = raw.replace(/\[(SEND_EMAIL|SEARCH|CREATE_TASK|GENERATE_DOC)\]([\s\S]*?)\[\/\1\]/gi, function(match, tag, content){
+    var processed = raw.replace(/\[(SEND_EMAIL|SEARCH|CREATE_TASK|GENERATE_DOC|GENERATE_FILE)\]([\s\S]*?)\[\/\1\]/gi, function(match, tag, content){
         return '\x00TOOL:'+tag+'\x01'+content+'\x02';
     });
     let s = h(processed);
@@ -1040,27 +1124,83 @@ function renderOrgChart(){
 const msgsEl  = document.getElementById('messages');
 const innerEl = document.getElementById('msgs');
 
-function bubble(role, text, type='normal'){
+let bubbleMenuCounter = 0;
+function bubbleDotsMenu(wrap, rawText){
+    const mid = 'bmenu-' + (++bubbleMenuCounter);
+    wrap.dataset.menuId = mid;
+    return `<div style="position:relative;flex-shrink:0;">
+        <button class="bubble-dots-btn" onclick="toggleBubbleMenu('${mid}',this)" title="Options"
+            style="opacity:0;color:var(--m);background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;font-size:16px;letter-spacing:1px;line-height:1;transition:opacity .15s,background .15s;"
+            onmouseenter="this.style.background='rgba(100,116,139,.15)';this.style.color='#ece6da'"
+            onmouseleave="this.style.background='none';this.style.color='var(--m)'">⋯</button>
+        <div id="${mid}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:50;min-width:110px;border-radius:10px;overflow:hidden;border:1px solid rgba(100,116,139,.22);background:rgba(15,23,42,.97);backdrop-filter:blur(12px);box-shadow:0 8px 24px rgba(0,0,0,.4);">
+            <button onclick="deleteTurnBubble(this)" style="display:flex;align-items:center;gap:8px;width:100%;padding:.5rem .85rem;background:none;border:none;cursor:pointer;font-size:.78rem;color:#fca5a5;text-align:left;transition:background .12s;" onmouseenter="this.style.background='rgba(248,113,113,.10)'" onmouseleave="this.style.background='none'"><span style="font-size:12px;">✕</span> Delete</button>
+        </div>
+    </div>`;
+}
+
+function toggleBubbleMenu(mid, btn){
+    document.querySelectorAll('[id^="bmenu-"]').forEach(m=>{ if(m.id!==mid) m.style.display='none'; });
+    const menu = document.getElementById(mid);
+    if(!menu) return;
+    const isOpen = menu.style.display==='block';
+    menu.style.display = isOpen ? 'none' : 'block';
+    if(!isOpen){
+        setTimeout(()=>{
+            document.addEventListener('click', function close(){ menu.style.display='none'; document.removeEventListener('click',close); }, {once:true});
+        }, 0);
+    }
+}
+
+function bubble(role, text, type='normal', turnId=null){
     const wrap = document.createElement('div');
+    wrap.className += ' chat-bubble';
+    if(turnId) wrap.dataset.turnId = turnId;
     const isUser = role==='user';
     if(type==='delegate'){
-        wrap.className='px-1';
+        wrap.className='px-1 chat-bubble';
         wrap.innerHTML=`<div class="b-delegate px-4 py-3 text-xs">${text}</div>`;
     } else if(isUser){
-        wrap.className='flex justify-end';
-        wrap.innerHTML=`<div class="b-user px-4 py-3 text-sm leading-relaxed" style="max-width:88%;"><p>${md(text)}</p></div>`;
+        wrap.className='flex justify-end items-center gap-1 chat-bubble';
+        const dotsHtml = bubbleDotsMenu(wrap, text);
+        wrap.innerHTML=`${dotsHtml}<div class="b-user px-4 py-3 text-sm leading-relaxed" style="max-width:88%;"><p>${md(text)}</p></div>`;
     } else {
-        wrap.className='flex justify-start flex-col gap-1';
+        wrap.className='flex justify-start flex-col gap-1 chat-bubble';
         const rawText=text;
+        const dotsHtml = bubbleDotsMenu(wrap, rawText);
         wrap.innerHTML=`<div class="b-bot px-4 py-3 text-sm leading-relaxed" style="max-width:88%;"><p>${md(text)}</p></div>
         <div class="flex items-center gap-2 pl-1" style="max-width:88%;">
             <button onclick="copyBubble(this)" data-text="${h(rawText)}" class="flex items-center gap-1 px-2 py-0.5 rounded mono text-[9px] uppercase tracking-widest transition-colors" style="color:var(--m);background:rgba(16,14,11,.5);border:1px solid rgba(235,225,200,.07);" onmouseenter="this.style.color='#e8b454'" onmouseleave="this.style.color='var(--m)'"><svg width="10" height="10"><use href="#i-copy"/></svg>Copy</button>
             <button onclick="downloadBubble(this)" data-text="${h(rawText)}" class="flex items-center gap-1 px-2 py-0.5 rounded mono text-[9px] uppercase tracking-widest transition-colors" style="color:var(--m);background:rgba(16,14,11,.5);border:1px solid rgba(235,225,200,.07);" onmouseenter="this.style.color='#e8b454'" onmouseleave="this.style.color='var(--m)'"><svg width="10" height="10"><use href="#i-download"/></svg>Download</button>
+            ${dotsHtml}
         </div>`;
     }
+    // Show/hide dots button on hover
+    wrap.addEventListener('mouseenter', ()=>{ wrap.querySelectorAll('.bubble-dots-btn').forEach(b=>b.style.opacity='1'); });
+    wrap.addEventListener('mouseleave', ()=>{ wrap.querySelectorAll('.bubble-dots-btn').forEach(b=>b.style.opacity='0'); });
     innerEl.appendChild(wrap);
     msgsEl.scrollTop=msgsEl.scrollHeight;
     return wrap;
+}
+
+async function deleteTurnBubble(btn){
+    const wrap = btn.closest('.chat-bubble');
+    if(!wrap) return;
+    const turnId = wrap.dataset.turnId;
+    wrap.style.transition = 'opacity .2s';
+    wrap.style.opacity = '.35';
+    if(turnId){
+        try{
+            const r = await fetch('/api/chat/delete-turn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:turnId})});
+            const d = await r.json();
+            if(!d.ok){ wrap.style.opacity='1'; return; }
+        }catch(_){ wrap.style.opacity='1'; return; }
+        // Remove matching inbox entry
+        const before=inbox.length;
+        inbox=inbox.filter(m=>m.turnId!==turnId);
+        if(inbox.length!==before){ saveState(); updateInboxBadge(); if(currentSection==='inbox') renderInbox(); }
+    }
+    setTimeout(()=>wrap.remove(), 200);
 }
 
 function copyBubble(btn){
@@ -1096,7 +1236,7 @@ function buildDelegateCard(agents, txt){
         const r=await fetch(`/api/history/${encodeURIComponent(ROOT.slug)}`);
         const d=await r.json();
         document.getElementById('loader').remove();
-        if(d.ok&&d.turns?.length) d.turns.forEach(t=>bubble(t.role,t.content));
+        if(d.ok&&d.turns?.length) d.turns.forEach(t=>bubble(t.role,t.content,'normal',t.id));
         else addWelcome();
     }catch(_){ document.getElementById('loader').textContent='// Could not load history.'; }
 })();
@@ -1114,22 +1254,90 @@ const snd=document.getElementById('snd');
 if(inp){
     inp.addEventListener('input',()=>{ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,144)+'px'; });
     inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();frm?.requestSubmit();} });
+
+    // ── paste image from clipboard (Ctrl+V a screenshot into the textarea) ──
+    inp.addEventListener('paste', e => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                setImgAttached(item.getAsFile());
+                return;
+            }
+        }
+    });
+}
+
+// ── image upload ────────────────────────────────────────────────────────────
+window.imgAttached = null; // {base64, mime, name, dataUrl}
+const imgInput = document.getElementById('img-input');
+const imgBtn   = document.getElementById('img-btn');
+
+function setImgAttached(file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { alert('Image too large — max 4 MB.'); return; }
+    const validTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+    if (!validTypes.includes(file.type)) { alert('Unsupported format. Use JPEG, PNG, GIF, or WebP.'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const dataUrl = e.target.result;
+        window.imgAttached = { base64: dataUrl.split(',')[1], mime: file.type, name: file.name||'image', dataUrl };
+        document.getElementById('img-thumb').src = dataUrl;
+        document.getElementById('img-fname').textContent = file.name || 'Pasted image';
+        document.getElementById('img-fsize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('img-preview-wrap').style.display = '';
+        if (imgBtn) { imgBtn.style.borderColor='rgba(232,180,84,.6)'; imgBtn.style.color='#e8b454'; }
+    };
+    reader.readAsDataURL(file);
+}
+
+if (imgInput) imgInput.addEventListener('change', () => { setImgAttached(imgInput.files[0]); imgInput.value=''; });
+
+function clearImage() {
+    window.imgAttached = null;
+    if (imgInput) imgInput.value = '';
+    const t = document.getElementById('img-thumb'); if(t) t.src='';
+    document.getElementById('img-preview-wrap').style.display = 'none';
+    if (imgBtn) { imgBtn.style.borderColor='rgba(232,180,84,.22)'; imgBtn.style.color='rgba(232,180,84,.6)'; }
 }
 
 frm?.addEventListener('submit', async e=>{
     e.preventDefault();
-    const txt=inp.value.trim(); if(!txt||!ROOT) return;
+    const txt=inp.value.trim();
+    if((!txt && !window.imgAttached) || !ROOT) return;
     snd.disabled=true; inp.value=''; inp.style.height='auto';
-    bubble('user',txt);
+    const displayTxt = txt || '📷 (image)';
+    const currentUserWrap = bubble('user', displayTxt);
+
+    // Show image thumbnail inside the user bubble
+    if (window.imgAttached) {
+        const imgEl = document.createElement('img');
+        imgEl.src = window.imgAttached.dataUrl;
+        imgEl.style.cssText = 'max-width:200px;max-height:150px;border-radius:10px;object-fit:cover;border:1px solid rgba(232,180,84,.2);margin-top:6px;display:block;';
+        const bub = currentUserWrap.querySelector('.b-user');
+        if (bub) bub.appendChild(imgEl);
+    }
 
     // Add to task log
-    const tlId = addToTaskLog(txt, ROOT.id, ROOT.name);
+    const tlId = addToTaskLog(txt || '(image)', ROOT.id, ROOT.name);
 
     const typRow=typingRow();
     document.getElementById('typing-status').classList.remove('hidden');
     document.getElementById('typing-status').classList.add('flex');
 
     let streamWrap=null, streamP=null, fullText='', delegated=[];
+
+    // 45-second timeout — if no chunk arrives, show an error instead of spinning forever
+    const _streamTimeout = setTimeout(()=>{
+        if(!streamWrap && typRow.parentNode){
+            typRow.remove();
+            document.getElementById('typing-status').classList.add('hidden');
+            document.getElementById('typing-status').classList.remove('flex');
+            bubble('assistant','⚠ No response received — the agent is taking too long. Please try again.');
+            snd.disabled=false; inp?.focus();
+        }
+    }, 45000);
 
     function ensureStreamBubble(){
         if(streamWrap) return;
@@ -1143,7 +1351,10 @@ frm?.addEventListener('submit', async e=>{
     }
 
     try{
-        const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:ROOT.slug,message:txt})});
+        const payload={slug:ROOT.slug, message:txt||'Please analyze this image.'};
+        if(window.imgAttached){ payload.imageData=window.imgAttached.base64; payload.imageMime=window.imgAttached.mime; }
+        clearImage();
+        const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!r.ok||!r.body) throw new Error('Stream failed: '+r.status);
 
         const reader=r.body.getReader(), decoder=new TextDecoder();
@@ -1160,6 +1371,7 @@ frm?.addEventListener('submit', async e=>{
                 let ev; try{ ev=JSON.parse(line.slice(6)); }catch(_){ continue; }
 
                 if(ev.type==='chunk'&&ev.text){
+                    clearTimeout(_streamTimeout);
                     ensureStreamBubble();
                     fullText+=ev.text;
                     streamP.innerHTML='<p style="margin-bottom:.35rem;">'+md(fullText)+'</p>'
@@ -1181,46 +1393,78 @@ frm?.addEventListener('submit', async e=>{
                     }
                 }
                 if(ev.type==='error'){
+                    clearTimeout(_streamTimeout);
                     ensureStreamBubble();
                     streamP.innerHTML='<p style="color:#f87171;">⚠ '+(ev.error||'Error')+'</p>';
                     updateTaskInLogById(tlId,'error');
                 }
                 if(ev.type==='tool_result'&&ev.results){
-                    // Show tool execution results as a card below the response
-                    const tc=document.createElement('div');
-                    tc.className='px-1';
                     const lines=ev.results.split('\n').filter(l=>l.trim());
+                    // ── Inject file links directly into SAVING FILE cards ──
+                    lines.forEach(l=>{
+                        if(!l.startsWith('FILE_URL:')) return;
+                        const furl=l.slice(9).trim();
+                        const fname=furl.split('/').pop().replace(/^\d{8}_\d{6}_[0-9a-f]{6}_/,'');
+                        const isHtml=/\.(html?|htm)$/i.test(fname);
+                        // Find the matching [data-gen-file] card in the current bubble
+                        const card=innerEl.querySelector('[data-gen-file="'+fname+'"]')
+                                || innerEl.querySelector('[data-gen-file]');
+                        if(card){
+                            // Update label to "FILE SAVED ✓"
+                            const lbl=card.querySelector('div > div:first-child');
+                            if(lbl) lbl.textContent='✓ FILE SAVED';
+                            // Inject the open link
+                            const linkSlot=card.querySelector('.gen-file-link');
+                            if(linkSlot) linkSlot.innerHTML='<a href="'+h(furl)+'" target="_blank" rel="noopener" '
+                                +'style="font-size:.78rem;font-weight:600;color:#e8b454;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">'
+                                +'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+                                +(isHtml?'Open in Browser ↗':'Download ↗')+'</a>';
+                        }
+                    });
+                    // ── TOOLS EXECUTED card (non-file results only) ────────
                     const resultsHtml=lines.map(l=>{
                         if(l.startsWith('IMAGE_URL:')){
                             const url=l.slice(10).trim();
                             return '<div style="margin:.5rem 0;"><img src="'+h(url)+'" alt="Generated image" style="max-width:100%;border-radius:12px;border:1px solid rgba(232,180,84,.2);" loading="lazy"><div style="margin-top:.3rem;"><a href="'+h(url)+'" target="_blank" rel="noopener" style="font-size:.7rem;color:#e8b454;">Open full size ↗</a></div></div>';
                         }
-                        if(l.startsWith('FILE_URL:')){
-                            const furl=l.slice(9).trim();
-                            return '<div style="margin:.3rem 0;"><a href="'+h(furl)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:#e8b454;"><svg width="12" height="12"><use href="#i-download"/></svg>Open document ↗</a></div>';
-                        }
+                        if(l.startsWith('FILE_URL:')||l.startsWith('Filename:')) return '';
                         if(l.startsWith('✓')) return '<div style="color:#3dd68c;font-size:.8rem;">'+h(l)+'</div>';
                         if(l.startsWith('⚠')) return '<div style="color:#f87171;font-size:.8rem;">'+h(l)+'</div>';
                         if(l.startsWith('[TOOL_RESULT:')) return '<div style="font-family:\'JetBrains Mono\',monospace;font-size:.7rem;color:rgba(232,180,84,.5);margin-top:.5rem;">'+h(l)+'</div>';
                         if(l.startsWith('[/TOOL_RESULT')) return '';
                         return '<div style="font-size:.8rem;color:#b6ad9a;">'+h(l)+'</div>';
                     }).join('');
-                    tc.innerHTML='<div style="margin:.3rem 0;padding:.6rem .85rem;background:rgba(16,14,11,.7);border:1px solid rgba(235,225,200,.12);border-left:2.5px solid #3dd68c;border-radius:0 10px 10px 0;">'
-                        +'<div style="font-size:.68rem;font-family:\'JetBrains Mono\',monospace;color:rgba(232,180,84,.5);margin-bottom:.35rem;">⚡ TOOLS EXECUTED</div>'
-                        +resultsHtml+'</div>';
-                    innerEl.appendChild(tc);
+                    if(resultsHtml.trim()){
+                        const tc=document.createElement('div');
+                        tc.className='px-1';
+                        tc.innerHTML='<div style="margin:.3rem 0;padding:.6rem .85rem;background:rgba(16,14,11,.7);border:1px solid rgba(235,225,200,.12);border-left:2.5px solid #3dd68c;border-radius:0 10px 10px 0;">'
+                            +'<div style="font-size:.68rem;font-family:\'JetBrains Mono\',monospace;color:rgba(232,180,84,.5);margin-bottom:.35rem;">⚡ TOOLS EXECUTED</div>'
+                            +resultsHtml+'</div>';
+                        innerEl.appendChild(tc);
+                    }
                     msgsEl.scrollTop=msgsEl.scrollHeight;
                 }
                 if(ev.type==='done'){
+                    clearTimeout(_streamTimeout);
                     if(streamP) streamP.innerHTML='<p style="margin-bottom:.35rem;">'+md(fullText)+'</p>';
+                    // Wire turn IDs so delete buttons work on freshly streamed messages
+                    if(ev.turn_ids){
+                        if(currentUserWrap && ev.turn_ids.user) currentUserWrap.dataset.turnId = ev.turn_ids.user;
+                        if(streamWrap && ev.turn_ids.assistant) streamWrap.dataset.turnId = ev.turn_ids.assistant;
+                    }
                     if(streamWrap&&fullText){
+                        streamWrap.className='flex justify-start flex-col gap-1 chat-bubble';
+                        const dotsHtml = bubbleDotsMenu(streamWrap, fullText);
                         const tb=document.createElement('div'); tb.className='flex items-center gap-2 pl-1'; tb.style.maxWidth='88%';
                         tb.innerHTML=`<button onclick="copyBubble(this)" data-text="${h(fullText)}" class="flex items-center gap-1 px-2 py-0.5 rounded mono text-[9px] uppercase tracking-widest transition-colors" style="color:var(--m);background:rgba(16,14,11,.5);border:1px solid rgba(235,225,200,.07);" onmouseenter="this.style.color='#e8b454'" onmouseleave="this.style.color='var(--m)'"><svg width="10" height="10"><use href="#i-copy"/></svg>Copy</button>
-                        <button onclick="downloadBubble(this)" data-text="${h(fullText)}" class="flex items-center gap-1 px-2 py-0.5 rounded mono text-[9px] uppercase tracking-widest transition-colors" style="color:var(--m);background:rgba(16,14,11,.5);border:1px solid rgba(235,225,200,.07);" onmouseenter="this.style.color='#e8b454'" onmouseleave="this.style.color='var(--m)'"><svg width="10" height="10"><use href="#i-download"/></svg>Download</button>`;
+                        <button onclick="downloadBubble(this)" data-text="${h(fullText)}" class="flex items-center gap-1 px-2 py-0.5 rounded mono text-[9px] uppercase tracking-widest transition-colors" style="color:var(--m);background:rgba(16,14,11,.5);border:1px solid rgba(235,225,200,.07);" onmouseenter="this.style.color='#e8b454'" onmouseleave="this.style.color='var(--m)'"><svg width="10" height="10"><use href="#i-download"/></svg>Download</button>
+                        ${dotsHtml}`;
                         streamWrap.appendChild(tb);
+                        streamWrap.addEventListener('mouseenter',()=>{ streamWrap.querySelectorAll('.bubble-dots-btn').forEach(b=>b.style.opacity='1'); });
+                        streamWrap.addEventListener('mouseleave',()=>{ streamWrap.querySelectorAll('.bubble-dots-btn').forEach(b=>b.style.opacity='0'); });
                     }
                     // Add to inbox
-                    if(fullText) addToInbox(fullText, ROOT.name);
+                    if(fullText) addToInbox(fullText, ROOT.name, ev.turn_ids?.assistant||null);
                     // Update task log
                     updateTaskInLogById(tlId, delegated.length?'done':'done');
                     delegated.forEach(a=>{ if(tasks[a.id]) tasks[a.id].output=fullText; });
@@ -1607,9 +1851,9 @@ async function confirmCancelTask(taskId){
 }
 
 // ══ INBOX ══
-function addToInbox(content, agentName){
+function addToInbox(content, agentName, turnId=null){
     const id=Date.now().toString(36);
-    inbox.unshift({id, content, ts:nowStr(), read:false, agentName:agentName||'CEO'});
+    inbox.unshift({id, content, ts:nowStr(), read:false, agentName:agentName||'CEO', turnId:turnId||null});
     if(inbox.length>60) inbox.pop();
     saveState(); updateInboxBadge();
     if(currentSection==='inbox') renderInbox();
@@ -1631,6 +1875,35 @@ function markInboxRead(id){
 }
 function markAllInboxRead(){ inbox.forEach(m=>m.read=true); saveState(); updateInboxBadge(); renderInbox(); }
 
+let _imCurrentTurnId = null;
+function openInboxMessage(id){
+    const m = inbox.find(x=>x.id===id);
+    if(!m) return;
+    if(!m.read){ m.read=true; saveState(); updateInboxBadge(); renderInbox(); }
+    document.getElementById('im-initials').textContent = initials(m.agentName||'CEO');
+    document.getElementById('im-agent').textContent    = m.agentName||'CEO';
+    document.getElementById('im-ts').textContent       = m.ts;
+    document.getElementById('im-body').innerHTML       = md(m.content);
+    _imCurrentTurnId = m.turnId || null;
+    const gotoBtn = document.getElementById('im-goto-btn');
+    if(gotoBtn) gotoBtn.style.display = _imCurrentTurnId ? '' : 'none';
+    document.getElementById('im-modal').classList.add('open');
+}
+function closeInboxMessage(){
+    document.getElementById('im-modal')?.classList.remove('open');
+    _imCurrentTurnId = null;
+}
+function inboxGoToChat(){
+    closeInboxMessage();
+    navTo('chat');
+    if(_imCurrentTurnId){
+        setTimeout(()=>{
+            const bubble = document.querySelector(`.chat-bubble[data-turn-id="${_imCurrentTurnId}"]`);
+            if(bubble){ bubble.scrollIntoView({behavior:'smooth',block:'center'}); bubble.style.outline='1.5px solid rgba(99,102,241,.5)'; setTimeout(()=>bubble.style.outline='',1800); }
+        }, 80);
+    }
+}
+
 function renderInbox(){
     const el=document.getElementById('inbox-list'); if(!el) return;
     const list=inboxTab==='unread' ? inbox.filter(m=>!m.read) : inbox;
@@ -1638,7 +1911,7 @@ function renderInbox(){
         el.innerHTML=`<div class="p-8 text-center mono text-xs" style="color:var(--m);">${inboxTab==='unread'?'// No unread messages.':'// Inbox empty. Send a command to start.'}</div>`; return;
     }
     el.innerHTML=list.map(m=>`
-        <div class="inbox-row ${m.read?'':'unread'}" onclick="markInboxRead('${m.id}')">
+        <div class="inbox-row ${m.read?'':'unread'}" style="position:relative;" onclick="openInboxMessage('${m.id}')">
             <div class="hex grid place-items-center font-bold flex-shrink-0 mt-0.5" style="width:30px;height:35px;font-size:.68rem;background:linear-gradient(135deg,rgba(232,180,84,.2),rgba(200,144,80,.15));color:#e8b454;">${initials(m.agentName||'CEO')}</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between gap-2 mb-0.5">
@@ -1647,7 +1920,61 @@ function renderInbox(){
                 </div>
                 <div class="text-xs truncate" style="color:var(--m);max-width:100%;">${h(m.content.substring(0,140))}${m.content.length>140?'…':''}</div>
             </div>
+            <div style="position:relative;flex-shrink:0;align-self:center;">
+                <button onclick="event.stopPropagation();toggleInboxMenu('${m.id}',this)" title="More options"
+                    style="opacity:0;color:var(--m);background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;font-size:16px;letter-spacing:1px;line-height:1;transition:opacity .15s,background .15s;"
+                    class="inbox-dots-btn"
+                    onmouseenter="this.style.background='rgba(100,116,139,.15)';this.style.color='#ece6da'"
+                    onmouseleave="this.style.background='none';this.style.color='var(--m)'">⋯</button>
+                <div id="inbox-menu-${m.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:50;min-width:110px;border-radius:10px;overflow:hidden;border:1px solid rgba(100,116,139,.22);background:rgba(15,23,42,.97);backdrop-filter:blur(12px);box-shadow:0 8px 24px rgba(0,0,0,.4);">
+                    <button onclick="event.stopPropagation();deleteInboxMessage('${m.id}')"
+                        style="display:flex;align-items:center;gap:8px;width:100%;padding:.5rem .85rem;background:none;border:none;cursor:pointer;font-size:.78rem;color:#fca5a5;text-align:left;transition:background .12s;"
+                        onmouseenter="this.style.background='rgba(248,113,113,.10)'"
+                        onmouseleave="this.style.background='none'">
+                        <span style="font-size:12px;">✕</span> Delete
+                    </button>
+                </div>
+            </div>
         </div>`).join('');
+
+    // Show dots on row hover
+    el.querySelectorAll('.inbox-row').forEach(row=>{
+        row.addEventListener('mouseenter',()=>{ const b=row.querySelector('.inbox-dots-btn'); if(b) b.style.opacity='1'; });
+        row.addEventListener('mouseleave',()=>{ const b=row.querySelector('.inbox-dots-btn'); if(b) b.style.opacity='0'; });
+    });
+}
+
+function toggleInboxMenu(id, btn){
+    // Close any other open menus first
+    document.querySelectorAll('[id^="inbox-menu-"]').forEach(m=>{ if(m.id!=='inbox-menu-'+id) m.style.display='none'; });
+    const menu=document.getElementById('inbox-menu-'+id);
+    if(!menu) return;
+    const isOpen = menu.style.display==='block';
+    menu.style.display = isOpen ? 'none' : 'block';
+    if(!isOpen){
+        // Close on outside click
+        setTimeout(()=>{
+            document.addEventListener('click', function closeMenu(){ menu.style.display='none'; document.removeEventListener('click',closeMenu); }, {once:true});
+        }, 0);
+    }
+}
+
+async function deleteInboxMessage(id){
+    const menu=document.getElementById('inbox-menu-'+id); if(menu) menu.style.display='none';
+    const entry = inbox.find(m=>m.id===id);
+    if(entry?.turnId){
+        // Delete the Supabase turn
+        try{ await fetch('/api/chat/delete-turn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:entry.turnId})}); }catch(_){}
+        // Remove matching chat bubble from DOM
+        document.querySelectorAll('.chat-bubble').forEach(wrap=>{
+            if(wrap.dataset.turnId===entry.turnId){
+                wrap.style.transition='opacity .2s'; wrap.style.opacity='0';
+                setTimeout(()=>wrap.remove(), 200);
+            }
+        });
+    }
+    inbox = inbox.filter(m=>m.id!==id);
+    saveState(); updateInboxBadge(); renderInbox();
 }
 
 // ══ DASHBOARD ══
@@ -1979,7 +2306,7 @@ function renderDetailOverview(){
             replyEl.innerHTML=`<p>${md(reply)}</p>`;
             if(d.ok){
                 document.getElementById('det-dm-inp').value='';
-                addToInbox(reply, detailAgent.name);
+                addToInbox(reply, detailAgent.name, d.turn_ids?.assistant||null);
                 tasks[detailAgent.id]={...(tasks[detailAgent.id]||{}),status:'working',text:msg.substring(0,70),ts:nowStr()};
                 addToTaskLog(msg.substring(0,70), detailAgent.id, detailAgent.name);
                 const badge=document.getElementById('det-badge'); if(badge){ badge.className='sbadge working'; badge.textContent='working'; }
@@ -2006,7 +2333,7 @@ async function triggerDetailHB(){
         const d=await r.json(); t.remove();
         const reply=d.ok?d.reply:'⚠ '+(d.error||'Error');
         bubble('assistant',reply);
-        if(d.ok) addToInbox(reply, detailAgent.name);
+        if(d.ok) addToInbox(reply, detailAgent.name, d.turn_ids?.assistant||null);
     }catch(_){ t.remove(); bubble('assistant','⚠ Network error.'); }
 }
 
@@ -2395,6 +2722,105 @@ updateIssuesBadge();
 window.addEventListener('beforeunload', ()=>{
     if(issuesTimer){ clearInterval(issuesTimer); }
 });
+</script>
+<script>
+// ── Org chart zoom (company) ──
+let coScale = 1;
+function coZoom(delta){
+    coScale = Math.min(2, Math.max(0.3, coScale + delta));
+    document.getElementById('org-tree').style.transform = `scale(${coScale})`;
+    document.getElementById('co-zoom-label').textContent = Math.round(coScale*100)+'%';
+}
+function coZoomReset(){ coScale=1; document.getElementById('org-tree').style.transform='scale(1)'; document.getElementById('co-zoom-label').textContent='100%'; }
+const _coWrap = document.getElementById('co-org-wrap');
+if(_coWrap){
+    _coWrap.style.cursor='grab';
+    _coWrap.addEventListener('wheel', e=>{ if(e.ctrlKey||e.metaKey){ e.preventDefault(); coZoom(e.deltaY < 0 ? 0.1 : -0.1); } }, {passive:false});
+    // Drag to pan
+    let _coDrag=false, _coX=0, _coY=0;
+    _coWrap.addEventListener('mousedown', e=>{ _coDrag=true; _coX=e.clientX+_coWrap.scrollLeft; _coY=e.clientY+_coWrap.scrollTop; _coWrap.style.cursor='grabbing'; e.preventDefault(); });
+    window.addEventListener('mousemove', e=>{ if(!_coDrag) return; _coWrap.scrollLeft=_coX-e.clientX; _coWrap.scrollTop=_coY-e.clientY; });
+    window.addEventListener('mouseup', ()=>{ _coDrag=false; _coWrap.style.cursor='grab'; });
+}
+
+// Re-run fade-in on section switch
+const _origNavTo = navTo;
+window.navTo = function(s){
+    _origNavTo(s);
+    const el = document.getElementById('s-'+s);
+    if(el){ el.style.opacity='0'; el.style.transform='translateY(16px)'; el.style.transition='opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)';
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateY(0)'; })); }
+};
+// Scroll-reveal
+const _ro2 = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); _ro2.unobserve(e.target); } });
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>_ro2.observe(el));
+</script>
+
+<script>
+// ══ VOICE COMMAND ══
+(function(){
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('mic-btn');
+    const inp = document.getElementById('inp');
+    if (!btn) return;
+
+    if (!SpeechRec) {
+        btn.title = 'Voice input not supported in this browser';
+        btn.style.opacity = '0.35';
+        btn.style.cursor  = 'not-allowed';
+        btn.onclick = () => alert('Voice input requires Chrome or Edge.');
+        return;
+    }
+
+    const rec = new SpeechRec();
+    rec.continuous      = false;
+    rec.interimResults  = true;
+    rec.lang            = 'en-US';
+
+    let listening  = false;
+    let savedText  = '';   // text typed before recording started
+
+    function startListening(){
+        listening = true;
+        savedText = inp ? inp.value : '';
+        btn.classList.add('recording');
+        btn.title = 'Listening… click to stop';
+        try { rec.start(); } catch(_){}
+    }
+
+    function stopListening(){
+        listening = false;
+        btn.classList.remove('recording');
+        btn.title = 'Voice command';
+        try { rec.stop(); } catch(_){}
+    }
+
+    rec.onresult = (e) => {
+        const interim = Array.from(e.results)
+            .map(r => r[0].transcript)
+            .join('');
+        if (inp) inp.value = savedText ? savedText + ' ' + interim : interim;
+        // Auto-resize textarea
+        if (inp) { inp.style.height = 'auto'; inp.style.height = inp.scrollHeight + 'px'; }
+    };
+
+    rec.onend = () => {
+        // If still listening (ended naturally), finalize
+        if (listening) stopListening();
+    };
+
+    rec.onerror = (e) => {
+        stopListening();
+        if (e.error === 'not-allowed') alert('Microphone access denied. Please allow microphone access in your browser settings.');
+    };
+
+    window.toggleVoice = function(){
+        if (listening) stopListening();
+        else startListening();
+    };
+})();
 </script>
 </body>
 </html>

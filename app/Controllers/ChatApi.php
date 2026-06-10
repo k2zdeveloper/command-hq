@@ -64,17 +64,23 @@ class ChatApi extends BaseController
         ]);
     }
 
-    /** POST: send a user message, return assistant reply. */
+    /** POST: send a user message (optionally with an image), return assistant reply. */
     public function send(): ResponseInterface
     {
         $json = $this->request->getJSON(true) ?? [];
         $slug    = trim((string) ($json['slug']    ?? ''));
         $message = trim((string) ($json['message'] ?? ''));
 
-        if ($slug === '' || $message === '') {
+        // Image is optional — allow empty message when image is present
+        $imageData = trim((string) ($json['imageData'] ?? ''));
+        $imageMime = trim((string) ($json['imageMime'] ?? 'image/jpeg'));
+        $validMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($imageMime, $validMimes, true)) $imageData = '';
+
+        if ($slug === '' || ($message === '' && $imageData === '')) {
             return $this->response->setStatusCode(400)->setJSON([
                 'ok'    => false,
-                'error' => 'slug and message are required',
+                'error' => 'slug and message (or image) are required',
             ]);
         }
 
@@ -99,7 +105,19 @@ class ChatApi extends BaseController
         foreach ($history as $h) {
             $messages[] = ['role' => $h['role'], 'content' => $h['content']];
         }
-        $messages[] = ['role' => 'user', 'content' => $message];
+
+        // Build user content — multimodal when an image is attached
+        if (!empty($imageData)) {
+            $userContent = [
+                ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $imageMime, 'data' => $imageData]],
+                ['type' => 'text',  'text'   => $message ?: 'Please analyze this image.'],
+            ];
+            $saveMessage = trim('[Image] ' . $message) ?: '[Image]';
+        } else {
+            $userContent = $message;
+            $saveMessage = $message;
+        }
+        $messages[] = ['role' => 'user', 'content' => $userContent];
 
         // 4) Call Claude
         try {
@@ -118,15 +136,16 @@ class ChatApi extends BaseController
             ]);
         }
 
-        // 5) Persist both turns
-        $supabase->saveTurn($agent['id'], $session, 'user', $message);
-        $supabase->saveTurn($agent['id'], $session, 'assistant', $result['text'], $result['usage']);
+        // 5) Persist both turns — save text-only (base64 not stored in DB)
+        $userTurnId      = $supabase->saveTurn($agent['id'], $session, 'user', $saveMessage);
+        $assistantTurnId = $supabase->saveTurn($agent['id'], $session, 'assistant', $result['text'], $result['usage']);
 
         return $this->response->setJSON([
-            'ok'      => true,
-            'reply'   => $result['text'],
-            'usage'   => $result['usage'],
-            'session' => $session,
+            'ok'       => true,
+            'reply'    => $result['text'],
+            'usage'    => $result['usage'],
+            'session'  => $session,
+            'turn_ids' => ['user' => $userTurnId, 'assistant' => $assistantTurnId],
         ]);
     }
 
@@ -193,7 +212,7 @@ class ChatApi extends BaseController
         if (!$id) {
             return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'id required']);
         }
-        $allowed = ['name', 'role_title', 'system_prompt', 'temperature', 'model', 'is_active'];
+        $allowed = ['name', 'role_title', 'system_prompt', 'temperature', 'model', 'is_active', 'parent_id'];
         $data    = [];
         foreach ($allowed as $key) {
             if (array_key_exists($key, $json)) {
@@ -357,6 +376,8 @@ class ChatApi extends BaseController
      */
     public function stream(): void
     {
+        set_time_limit(0); // streaming + file-save may exceed default 60s limit
+
         while (ob_get_level()) {
             ob_end_clean();
         }
@@ -365,9 +386,15 @@ class ChatApi extends BaseController
         $slug    = trim((string) ($json['slug']    ?? ''));
         $message = trim((string) ($json['message'] ?? ''));
 
-        if ($slug === '' || $message === '') {
+        // Image is optional — allow empty message when image is present
+        $imageData = trim((string) ($json['imageData'] ?? ''));
+        $imageMime = trim((string) ($json['imageMime'] ?? 'image/jpeg'));
+        $validMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($imageMime, $validMimes, true)) $imageData = '';
+
+        if ($slug === '' || ($message === '' && $imageData === '')) {
             header('Content-Type: application/json');
-            echo json_encode(['ok' => false, 'error' => 'slug and message are required']);
+            echo json_encode(['ok' => false, 'error' => 'slug and message (or image) are required']);
             exit;
         }
 
@@ -383,7 +410,7 @@ class ChatApi extends BaseController
         $skillRows    = $supabase->getAgentSkills($agent['id']);
         $division     = $agent['division'] ?? 'positive_nation';
         $rosterAgents = $supabase->getCompanyAgents($division);
-        $memory       = $supabase->getMemory($agent['id'], $session);          // long-term summary
+        $memory       = $supabase->getMemory($agent['id'], $session);
         $systemPrompt = $this->composeSystemPrompt($agent, $skillRows, $rosterAgents, $memory['summary'] ?? '');
         $windowSize   = (int) (getenv('memory.windowTurns') ?: 12);
         $history      = $supabase->getRecentTurns($agent['id'], $session, $windowSize);
@@ -392,7 +419,19 @@ class ChatApi extends BaseController
         foreach ($history as $h) {
             $messages[] = ['role' => $h['role'], 'content' => $h['content']];
         }
-        $messages[] = ['role' => 'user', 'content' => $message];
+
+        // Build user content — multimodal when an image is attached
+        if (!empty($imageData)) {
+            $userContent = [
+                ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $imageMime, 'data' => $imageData]],
+                ['type' => 'text',  'text'   => $message ?: 'Please analyze this image.'],
+            ];
+            $saveMessage = trim('[Image] ' . $message) ?: '[Image]';
+        } else {
+            $userContent = $message;
+            $saveMessage = $message;
+        }
+        $messages[] = ['role' => 'user', 'content' => $userContent];
 
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
@@ -467,17 +506,33 @@ class ChatApi extends BaseController
             }
         }
 
-        // Persist as a single assistant turn (keeps user/assistant alternation).
-        $supabase->saveTurn($agent['id'], $session, 'user', $message);
-        $supabase->saveTurn($agent['id'], $session, 'assistant', $assistantText, $finalUsage);
+        // Persist as a single assistant turn — text-only (base64 not stored in DB).
+        $userTurnId      = $supabase->saveTurn($agent['id'], $session, 'user', $saveMessage);
+        $assistantTurnId = $supabase->saveTurn($agent['id'], $session, 'assistant', $assistantText, $finalUsage);
 
-        $sse(['type' => 'done', 'session' => $session]);
+        // Auto-save code files and documents to Files section.
+        $taskTitle = mb_substr(trim($saveMessage), 0, 80);
+        $dispatcher->autoSaveOutput($taskTitle, $assistantText);
+
+        $sse(['type' => 'done', 'session' => $session, 'turn_ids' => ['user' => $userTurnId, 'assistant' => $assistantTurnId]]);
 
         // Long-term memory: fold older turns into a compact summary (runs
         // after the reply is delivered; only refreshes occasionally).
         $this->maybeSummarize($supabase, $agent, $session);
 
         exit;
+    }
+
+    /** POST: delete a single conversation turn {id}. */
+    public function deleteTurn(): ResponseInterface
+    {
+        $json = $this->request->getJSON(true) ?? [];
+        $id   = trim((string) ($json['id'] ?? ''));
+        if ($id === '') {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'id required']);
+        }
+        (new SupabaseModel())->deleteTurn($id);
+        return $this->response->setJSON(['ok' => true]);
     }
 
     // ---- helpers ----------------------------------------------------------
@@ -577,7 +632,8 @@ class ChatApi extends BaseController
             . "- Keep replies scannable: 3-6 short bullets max. Avoid walls of text and big tables unless explicitly asked.\n"
             . "- When you call a tool, output ONLY a one-line intro and the tool block — do NOT write results, tables, or a report yet. You will receive the REAL tool results and then write your report from them. Never invent or predict tool output.\n"
             . "- To hire: confirm the role in ONE line, then call [HIRE_AGENT]. Do NOT write a full job description, salary, or interview questions unless the user explicitly asks for a 'hiring package'.\n"
-            . "- Never repeat information already shown. Finish your tool calls — never leave one half-written.";
+            . "- Never repeat information already shown. Finish your tool calls — never leave one half-written.\n"
+            . "- ⚠️ FILE/CODE CREATION: When a user asks YOU to create a code file, webpage, script, Word document, or presentation, YOU must do it yourself using [GENERATE_FILE], [GENERATE_PPTX], [GENERATE_DOCX], or [GENERATE_DOC] in this response — NEVER use [CREATE_TASK] for file creation. [CREATE_TASK] is only for long-running background work, not for files the user is waiting on right now.";
 
         $skillBlocks = [];
         foreach ($skillRows as $row) {
@@ -595,68 +651,8 @@ class ChatApi extends BaseController
             $parts[] = "\n\n---\nADDITIONAL CONTEXT GRANTED TO THIS AGENT:\n" . implode("\n\n", $skillBlocks);
         }
 
-        // Inject tool documentation — tools are executed immediately in this session
-        $parts[] = "\n\n---\n## AVAILABLE TOOLS — EXECUTE REAL ACTIONS\n"
-            . "You have access to tools that perform real actions. Use them directly — do NOT say you cannot send emails or search the web.\n\n"
-            . "### Send Email\n"
-            . "[SEND_EMAIL]\n"
-            . "to: recipient@email.com\n"
-            . "subject: Subject line\n"
-            . "body:\n"
-            . "Email body here. Can be multiple lines.\n"
-            . "[/SEND_EMAIL]\n\n"
-            . "### Generate Image\n"
-            . "You CAN create real images. Never say you cannot generate images — use this tool. Write a vivid, detailed prompt.\n"
-            . "[GENERATE_IMAGE]\n"
-            . "prompt: detailed description of the image\n"
-            . "size: 1024x1024\n"
-            . "[/GENERATE_IMAGE]\n\n"
-            . "### Generate Document (saved to Files, printable to PDF)\n"
-            . "[GENERATE_DOC]\n"
-            . "title: Document Title\n"
-            . "content:\n"
-            . "# Heading\\nFull document body in markdown...\n"
-            . "[/GENERATE_DOC]\n\n"
-            . "### Web Search (current information)\n"
-            . "[SEARCH]\n"
-            . "query: what you want to search\n"
-            . "[/SEARCH]\n\n"
-            . "### Check Site — live website QA (you CAN visit real pages)\n"
-            . "Visit REAL pages and get verifiable facts: HTTP status, load time, HTTPS/SSL, redirects, "
-            . "title, forms present, and a 404 scan. Add `scope: site` to discover and check EVERY page via "
-            . "sitemap.xml. Never submits form data. After results come back, write a SIMPLE report "
-            . "(🟢/🟡/🔴 then issues).\n"
-            . "[CHECK_SITE]\n"
-            . "url: https://example.com\n"
-            . "scope: site\n"
-            . "[/CHECK_SITE]\n"
-            . "READING RESULTS — avoid false alarms: a form action of '#'/empty/JavaScript is NORMAL "
-            . "(JS/AJAX submit), NOT a broken form. A 404/405 GET-probe on a form action is often normal "
-            . "(POST-only). Only call something broken if the PAGE returns 4xx/5xx. JS-rendered sites may "
-            . "show 'no forms/links in static HTML' — that's a static-check limitation, not a defect. "
-            . "Report ONLY what the tool returned; never invent statuses or numbers.\n\n"
-            . "### Assign Task to a Specific Agent\n"
-            . "[CREATE_TASK]\n"
-            . "agent: Agent Name\n"
-            . "title: Task title\n"
-            . "priority: high\n"
-            . "description:\n"
-            . "What the agent should do.\n"
-            . "[/CREATE_TASK]\n\n"
-            . "### Hire a New Agent (you CAN expand the team)\n"
-            . "[HIRE_AGENT]\n"
-            . "name: New Agent Name\n"
-            . "role: Their Role Title\n"
-            . "reports_to: Manager Agent Name\n"
-            . "prompt: System prompt describing their duties\n"
-            . "[/HIRE_AGENT]\n\n"
-            . "### Fire (deactivate) an Agent — reversible\n"
-            . "[FIRE_AGENT]\n"
-            . "agent: Agent Name\n"
-            . "[/FIRE_AGENT]\n\n"
-            . "**Rules:** Use tools when the user asks for real actions. Tools execute immediately and results are shown to the user. "
-            . "Never say 'I cannot send emails' — use [SEND_EMAIL] instead. "
-            . "Always confirm what you did after a tool runs.";
+        // Inject tool documentation (single source of truth — same as AgentRun task runner)
+        $parts[] = ToolDispatcher::toolDocs();
 
         return implode("\n", $parts);
     }

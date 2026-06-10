@@ -228,6 +228,12 @@ class AgentRun extends BaseCommand
                 'claimed_at'   => null,
             ]);
 
+            // Auto-save task output to company Files
+            $dispatcher->autoSaveOutput(
+                ($task['title'] ?? 'Task Result') . ' — ' . ($agent['name'] ?? 'Agent'),
+                $finalOutput
+            );
+
             @unlink($signalFile);
             CLI::write("    ✓ Done. Tokens: {$totalTokens}", 'green');
 
@@ -276,7 +282,12 @@ class AgentRun extends BaseCommand
             . "Complete the assigned task thoroughly. Produce real, usable output.\n"
             . "Do not ask questions — make reasonable decisions and proceed.\n"
             . "Be concise and action-oriented: lead with the result, use short bullets, no filler.\n"
-            . "Always finish your tool calls — never leave one half-written.";
+            . "Always finish your tool calls — never leave one half-written.\n"
+            . "CRITICAL — CODE & FILE TASKS: Any task involving HTML, CSS, JS, PHP, Python, SQL, "
+            . "or any other code MUST use GENERATE_FILE to save the code as a real file. "
+            . "NEVER paste raw code blocks in your response text — always use GENERATE_FILE. "
+            . "One file per GENERATE_FILE call. After saving, confirm only the filename. "
+            . "Do NOT repeat or summarize the code content in your response.";
 
         // 3. Tool documentation
         $parts[] = ToolDispatcher::toolDocs();

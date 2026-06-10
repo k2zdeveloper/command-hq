@@ -208,7 +208,7 @@ class SupabaseModel
     public function getRecentTurns(string $agentId, string $sessionId, int $limit = 12): array
     {
         $rows = $this->get('/conversations', [
-            'select'     => 'role,content,created_at',
+            'select'     => 'id,role,content,created_at',
             'agent_id'   => 'eq.' . $agentId,
             'session_id' => 'eq.' . $sessionId,
             'role'       => 'in.(user,assistant)',
@@ -218,15 +218,23 @@ class SupabaseModel
         return array_reverse($rows);
     }
 
-    public function saveTurn(string $agentId, string $sessionId, string $role, string $content, ?array $usage = null): void
+    /** Save a conversation turn and return its ID. */
+    public function saveTurn(string $agentId, string $sessionId, string $role, string $content, ?array $usage = null): ?string
     {
-        $this->post('/conversations', [[
+        $result = $this->post('/conversations', [[
             'agent_id'    => $agentId,
             'session_id'  => $sessionId,
             'role'        => $role,
             'content'     => $content,
             'token_usage' => $usage,
-        ]], ['return=minimal']);
+        ]]);
+        return $result[0]['id'] ?? null;
+    }
+
+    /** Delete a single conversation turn by ID. */
+    public function deleteTurn(string $id): bool
+    {
+        return $this->delete('/conversations?id=eq.' . $id);
     }
 
     /** Long-term conversation memory (one row per agent+session). */

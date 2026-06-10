@@ -78,7 +78,7 @@ class ToolDispatcher
      */
     public function hasTools(string $text): bool
     {
-        return (bool) preg_match('/\[(SEARCH|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|HIRE_AGENT|FIRE_AGENT|CHECK_SITE)\]/i', $text);
+        return (bool) preg_match('/\[(SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|GENERATE_IMAGE|GENERATE_DOC|GENERATE_FILE|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|HIRE_AGENT|FIRE_AGENT|CHECK_SITE)\]/i', $text);
     }
 
     /**
@@ -99,6 +99,21 @@ class ToolDispatcher
                 log_message('info', "ToolDispatcher: SEARCH — {$query}");
                 $result    = $this->search->search($query);
                 $results[] = $this->wrapResult('SEARCH', "Query: {$query}\n\n{$result}");
+            }
+        }
+
+        // ── [SEARCH_PERSON] ... [/SEARCH_PERSON] ─────────────────────
+        if (preg_match_all('/\[SEARCH_PERSON\](.*?)\[\/SEARCH_PERSON\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $name    = $this->field($block, 'name');
+                $context = $this->field($block, 'context') ?? '';
+                if (empty($name)) {
+                    $results[] = $this->wrapResult('SEARCH_PERSON', '⚠ Skipped — "name" is required.');
+                    continue;
+                }
+                log_message('info', "ToolDispatcher: SEARCH_PERSON — {$name}");
+                $result    = $this->search->searchPerson($name, $context);
+                $results[] = $this->wrapResult('SEARCH_PERSON', $result);
             }
         }
 
@@ -159,14 +174,171 @@ class ToolDispatcher
         // ── [GENERATE_DOC] ... [/GENERATE_DOC] ───────────────────────
         if (preg_match_all('/\[GENERATE_DOC\](.*?)\[\/GENERATE_DOC\]/si', $text, $matches)) {
             foreach ($matches[1] as $block) {
-                $title   = $this->field($block, 'title');
-                $content = $this->field($block, 'content');
+                $title = $this->field($block, 'title');
+                // Same greedy extraction as GENERATE_FILE — content may contain
+                // CSS/code lines that break the lookahead-based field() parser.
+                $content = null;
+                if (preg_match('/^content:\s*\n([\s\S]*)/mi', $block, $cm)) {
+                    $content = $cm[1];
+                } elseif (preg_match('/^content:\s*(.+)/mi', $block, $cm)) {
+                    $content = trim($cm[1]);
+                }
                 if (empty($title) || empty($content)) {
                     $results[] = $this->wrapResult('GENERATE_DOC', '⚠ Skipped — "title" and "content" are required.');
                     continue;
                 }
                 $result    = $this->saveDocument($title, $content);
                 $results[] = $this->wrapResult('GENERATE_DOC', $result);
+            }
+        }
+
+        // ── [GENERATE_FILE] ... [/GENERATE_FILE] ─────────────────────
+        if (preg_match_all('/\[GENERATE_FILE\](.*?)\[\/GENERATE_FILE\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $filename = $this->field($block, 'filename');
+                // Cannot use field() for content — CSS/JS lines like "color: red"
+                // match the lookahead and prematurely terminate multi-line extraction.
+                // Grab everything from "content:\n" to end of block instead.
+                $content = null;
+                if (preg_match('/^content:\s*\n([\s\S]*)/mi', $block, $cm)) {
+                    $content = $cm[1];
+                } elseif (preg_match('/^content:\s*(.+)/mi', $block, $cm)) {
+                    $content = trim($cm[1]);
+                }
+                if (empty($filename) || $content === null || trim($content) === '') {
+                    $results[] = $this->wrapResult('GENERATE_FILE', '⚠ Skipped — "filename" and "content" are required.');
+                    continue;
+                }
+                log_message('info', "ToolDispatcher: GENERATE_FILE — {$filename}");
+                $result    = $this->saveFile($filename, $content);
+                $results[] = $this->wrapResult('GENERATE_FILE', $result);
+            }
+        }
+
+        // ── [GENERATE_PPTX] ... [/GENERATE_PPTX] ────────────────────────────
+        if (preg_match_all('/\[GENERATE_PPTX\](.*?)\[\/GENERATE_PPTX\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $filename = $this->field($block, 'filename') ?? 'presentation.pptx';
+                $theme    = $this->field($block, 'theme') ?? 'dark';
+
+                // Parse slides — each slide is delimited by a line containing only ---
+                $rawSections = preg_split('/^\s*---\s*$/m', $block);
+                $slides = [];
+                foreach ($rawSections as $rawSlide) {
+                    $rawSlide = trim($rawSlide);
+                    if ($rawSlide === '') continue;
+                    // Skip the header section (contains filename/theme, has no title: line)
+                    if (!preg_match('/^title:\s*/mi', $rawSlide)) continue;
+
+                    $slideTitle    = $this->field($rawSlide, 'title') ?? '';
+                    $slideSubtitle = $this->field($rawSlide, 'subtitle');
+                    $slideType     = $this->field($rawSlide, 'type') ?? 'content';
+                    $slideContent  = null;
+                    if (preg_match('/^content:\s*\n([\s\S]*)/mi', $rawSlide, $cm)) {
+                        $slideContent = trim($cm[1]);
+                    } elseif (preg_match('/^content:\s*(.+)/mi', $rawSlide, $cm)) {
+                        $slideContent = trim($cm[1]);
+                    }
+
+                    $slides[] = [
+                        'title'    => $slideTitle,
+                        'subtitle' => $slideSubtitle,
+                        'type'     => $slideType,
+                        'content'  => $slideContent,
+                    ];
+                }
+
+                if (empty($slides)) {
+                    $results[] = $this->wrapResult('GENERATE_PPTX', '⚠ Skipped — no slides found. Use --- to separate slides and title: for each slide.');
+                    continue;
+                }
+
+                log_message('info', "ToolDispatcher: GENERATE_PPTX — {$filename} (" . count($slides) . " slides)");
+                $result    = $this->savePptx($filename, $slides, $theme);
+                $results[] = $this->wrapResult('GENERATE_PPTX', $result);
+            }
+        }
+
+        // ── [GENERATE_DOCX] ... [/GENERATE_DOCX] ────────────────────────────
+        if (preg_match_all('/\[GENERATE_DOCX\](.*?)\[\/GENERATE_DOCX\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $filename = $this->field($block, 'filename') ?? 'document.docx';
+                $title    = $this->field($block, 'title') ?? 'Document';
+                $content  = null;
+                if (preg_match('/^content:\s*\n([\s\S]*)/mi', $block, $cm)) {
+                    $content = $cm[1];
+                } elseif (preg_match('/^content:\s*(.+)/mi', $block, $cm)) {
+                    $content = trim($cm[1]);
+                }
+                if (empty($content)) {
+                    $results[] = $this->wrapResult('GENERATE_DOCX', '⚠ Skipped — "content" is required.');
+                    continue;
+                }
+                log_message('info', "ToolDispatcher: GENERATE_DOCX — {$filename}");
+                $result    = $this->saveDocx($filename, $title, $content);
+                $results[] = $this->wrapResult('GENERATE_DOCX', $result);
+            }
+        }
+
+        // ── [GENERATE_XLSX] ... [/GENERATE_XLSX] ────────────────────────────
+        if (preg_match_all('/\[GENERATE_XLSX\](.*?)\[\/GENERATE_XLSX\]/si', $text, $matches)) {
+            foreach ($matches[1] as $block) {
+                $filename = $this->field($block, 'filename') ?? 'spreadsheet.xlsx';
+                $title    = $this->field($block, 'title') ?? 'Spreadsheet';
+
+                // Parse sheets — each sheet starts with a "sheet: Name" line
+                $sheets = [];
+                // Split block into sheet sections by lines beginning with "sheet:"
+                $sections = preg_split('/^sheet:\s*/mi', "\n" . $block);
+                foreach ($sections as $section) {
+                    $section = trim($section);
+                    if ($section === '') continue;
+                    // First line of section = sheet name
+                    $lines     = explode("\n", $section);
+                    $sheetName = trim(array_shift($lines));
+                    if ($sheetName === '' || preg_match('/^(filename|title):/i', $sheetName)) continue;
+                    $remaining = implode("\n", $lines);
+
+                    // headers: line (CSV)
+                    $headers = [];
+                    if (preg_match('/^headers:\s*(.+)$/mi', $remaining, $hm)) {
+                        $headers = array_map('trim', str_getcsv($hm[1]));
+                    }
+
+                    // row: lines (CSV)
+                    $rows = [];
+                    if (preg_match_all('/^row:\s*(.+)$/mi', $remaining, $rm)) {
+                        foreach ($rm[1] as $rowLine) {
+                            $rows[] = array_map('trim', str_getcsv($rowLine));
+                        }
+                    }
+
+                    $sheets[] = ['name' => $sheetName, 'headers' => $headers, 'rows' => $rows];
+                }
+
+                // Fallback: no "sheet:" markers — treat whole block as one sheet
+                if (empty($sheets)) {
+                    $headers = [];
+                    if (preg_match('/^headers:\s*(.+)$/mi', $block, $hm)) {
+                        $headers = array_map('trim', str_getcsv($hm[1]));
+                    }
+                    $rows = [];
+                    if (preg_match_all('/^row:\s*(.+)$/mi', $block, $rm)) {
+                        foreach ($rm[1] as $rowLine) {
+                            $rows[] = array_map('trim', str_getcsv($rowLine));
+                        }
+                    }
+                    $sheets[] = ['name' => 'Sheet1', 'headers' => $headers, 'rows' => $rows];
+                }
+
+                if (empty($sheets[0]['headers']) && empty($sheets[0]['rows'])) {
+                    $results[] = $this->wrapResult('GENERATE_XLSX', '⚠ Skipped — no headers or rows found. Use "headers:" and "row:" lines.');
+                    continue;
+                }
+
+                log_message('info', "ToolDispatcher: GENERATE_XLSX — {$filename} (" . count($sheets) . " sheet(s))");
+                $result    = $this->saveXlsx($filename, $title, $sheets);
+                $results[] = $this->wrapResult('GENERATE_XLSX', $result);
             }
         }
 
@@ -283,24 +455,38 @@ class ToolDispatcher
 
     private function saveDocument(string $title, string $content): string
     {
+        // If the agent passed raw code as content, save it as a real file instead
+        // of wrapping it in the document template (which would HTML-escape the code).
+        $trimmed = ltrim($content);
+        $isCode = preg_match('/^<!DOCTYPE\s/i', $trimmed)
+               || preg_match('/^<html[\s>]/i', $trimmed)
+               || preg_match('/^<\?php/i', $trimmed)
+               || preg_match('/^<\?xml/i', $trimmed)
+               || preg_match('/^```[a-zA-Z]/m', $trimmed);
+        if ($isCode) {
+            $ext  = 'html';
+            if (preg_match('/^<\?php/i', $trimmed)) $ext = 'php';
+            if (preg_match('/^<\?xml/i', $trimmed)) $ext = 'xml';
+            $slug = preg_replace('/[^a-zA-Z0-9\-]/', '-', strtolower(trim($title)));
+            $slug = trim($slug, '-') ?: 'file';
+            return $this->saveFile($slug . '.' . $ext, $content);
+        }
+
         $html = $this->documentHtml($title, $content);
         $name = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '.html';
 
-        // 1) Preferred: Supabase Storage → opens on any device
-        $url = $this->supabase->uploadToStorage($name, $html, 'text/html');
-
-        // 2) Fallback: local disk
-        if (!$url) {
-            $dir = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
-            if (!is_dir($dir)) @mkdir($dir, 0775, true);
-            if (!is_dir($dir) || !is_writable($dir)) {
-                return "⚠ Cannot save document — storage upload failed and public/generated/ is not writable.";
-            }
-            if (file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $html) === false) {
-                return "⚠ Failed to write document file.";
-            }
-            $url = '/generated/' . $name;
+        // Save under company-specific subfolder — same pattern as saveFile().
+        $companySlug = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->companyId ?: 'shared');
+        $base = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
+        $dir  = $base . DIRECTORY_SEPARATOR . $companySlug;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return "⚠ Cannot save document — public/generated/{$companySlug}/ is not writable.";
         }
+        if (file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $html) === false) {
+            return "⚠ Failed to write document file.";
+        }
+        $url = '/file/' . $companySlug . '/' . $name;
 
         $this->recordArtifact('document', mb_substr($title, 0, 120), $url, 'text/html');
 
@@ -332,6 +518,272 @@ class ToolDispatcher
             . '<p>' . $b . '</p>'
             . '<hr><p style="font-size:11px;color:#999;font-family:Arial,sans-serif;">Generated by Mosbat AI &middot; '
             . date('F j, Y') . '</p></body></html>';
+    }
+
+    // ── Auto-save agent output to Files ─────────────────────────────────
+
+    /**
+     * Automatically save a substantial agent response or task result to the
+     * company Files section. Strips tool call blocks and result noise first.
+     * If the response contains fenced code blocks (```html, ```css, ```js, etc.),
+     * each block is extracted and saved as a real code file via saveFile().
+     * No-ops if the content is too short or companyId is unset.
+     */
+    public function autoSaveOutput(string $title, string $text): void
+    {
+        if (empty($this->companyId)) return;
+
+        $savedFiles = 0;
+
+        // ── 0. Unclosed GENERATE_FILE blocks ──────────────────────────────
+        // executeAll() handles properly-closed [GENERATE_FILE]...[/GENERATE_FILE]
+        // blocks. But agents in web chat often omit the closing tag, which makes
+        // executeAll() skip the block entirely. Rescue those here by detecting
+        // a [GENERATE_FILE] with no matching closing tag and saving the file.
+        $hasClosedGf = (bool) preg_match('/\[GENERATE_FILE\][\s\S]*?\[\/GENERATE_FILE\]/si', $text);
+        if (!$hasClosedGf && preg_match('/\[GENERATE_FILE\]([\s\S]+)\z/i', $text, $m)) {
+            $block    = $m[1];
+            $filename = $this->field($block, 'filename');
+            $content  = null;
+            if (preg_match('/^content:\s*\n([\s\S]*)/mi', $block, $cm)) {
+                $content = $cm[1];
+            } elseif (preg_match('/^content:\s*(.+)/mi', $block, $cm)) {
+                $content = trim($cm[1]);
+            }
+            if (!empty($filename) && $content !== null && trim($content) !== '') {
+                $this->saveFile($filename, trim($content));
+                $savedFiles++;
+            }
+        }
+
+        // If we rescued an unclosed GENERATE_FILE, we're done.
+        if ($savedFiles > 0) return;
+
+        // Strip raw tool call blocks (closed form with matching closing tag)
+        $clean = preg_replace(
+            '/\[(?:GENERATE_FILE|GENERATE_DOC|GENERATE_PPTX|GENERATE_DOCX|GENERATE_XLSX|GENERATE_IMAGE|SEARCH|SEARCH_PERSON|SEND_EMAIL|CREATE_TASK|HIRE_AGENT|FIRE_AGENT|CHECK_SITE)[^\]]*\][\s\S]*?\[\/[^\]]+\]/i',
+            '', $text
+        );
+        // Strip unclosed [GENERATE_FILE] that couldn't be matched above
+        $clean = preg_replace('/\[GENERATE_FILE\][\s\S]*/i', '', $clean);
+        // Strip TOOL RESULTS echo
+        $clean = preg_replace('/══ TOOL RESULTS ══[\s\S]*?══ END OF TOOL RESULTS ══/i', '', $clean);
+        // Strip STATUS line
+        $clean = preg_replace('/^STATUS:\s*.+$/mi', '', $clean);
+        $clean = trim($clean);
+
+        if (mb_strlen($clean) < 100) return;
+
+        $codeExtensions = [
+            'html' => 'html', 'htm' => 'html',
+            'css'  => 'css',
+            'js'   => 'js',   'javascript' => 'js',
+            'php'  => 'php',
+            'py'   => 'py',   'python' => 'py',
+            'sql'  => 'sql',
+            'json' => 'json',
+            'xml'  => 'xml',
+            'ts'   => 'ts',   'typescript' => 'ts',
+            'sh'   => 'sh',   'bash' => 'sh',
+        ];
+
+        $baseTitle = trim(preg_replace('/\s+/', '_', preg_replace('/[^a-zA-Z0-9\s_\-]/', '', $title))) ?: 'output';
+
+        // ── 1. Fenced code blocks: ```html ... ``` ───────────────────────
+        $codePattern = '/```(' . implode('|', array_keys($codeExtensions)) . ')\s*\r?\n([\s\S]*?)```/i';
+
+        if (preg_match_all($codePattern, $clean, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $i => $match) {
+                $lang     = strtolower($match[1]);
+                $code     = trim($match[2]);
+                $ext      = $codeExtensions[$lang] ?? $lang;
+                $suffix   = count($matches) > 1 ? '_' . ($i + 1) : '';
+                $filename = $baseTitle . $suffix . '.' . $ext;
+
+                if (mb_strlen($code) > 50) {
+                    $this->saveFile($filename, $code);
+                    $savedFiles++;
+                }
+            }
+        }
+
+        // ── 2. Raw HTML dumped without fences ────────────────────────────
+        if ($savedFiles === 0 && preg_match('/(<!DOCTYPE\s+html[\s\S]*?<\/html>|<html[\s\S]*?<\/html>)/i', $clean, $m)) {
+            $this->saveFile($baseTitle . '.html', trim($m[1]));
+            $savedFiles++;
+        }
+
+        // ── 3. Fallback: save as formatted document ───────────────────────
+        $prose = trim(preg_replace($codePattern, '', $clean));
+        if ($savedFiles === 0 && mb_strlen($clean) >= 300) {
+            $this->saveDocument($title, $clean);
+        } elseif ($savedFiles > 0 && mb_strlen($prose) >= 300) {
+            $this->saveDocument($title . ' — Notes', $prose);
+        }
+    }
+
+    // ── Tool: Generate PowerPoint Presentation ───────────────────────────
+
+    private function savePptx(string $filename, array $slides, string $theme = 'dark'): string
+    {
+        $safe = preg_replace('/[^a-zA-Z0-9._\-]/', '_', basename($filename));
+        if (!preg_match('/\.pptx$/i', $safe)) $safe .= '.pptx';
+        if ($safe === '.pptx') $safe = 'presentation.pptx';
+
+        $name = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . $safe;
+
+        $companySlug = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->companyId ?: 'shared');
+        $base = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
+        $dir  = $base . DIRECTORY_SEPARATOR . $companySlug;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return "⚠ Cannot save presentation — public/generated/{$companySlug}/ is not writable.";
+        }
+
+        $path = $dir . DIRECTORY_SEPARATOR . $name;
+
+        try {
+            $service = new PptxService();
+            $tmpPath = $service->generate($slides[0]['title'] ?? 'Presentation', $slides, $theme);
+            if (!rename($tmpPath, $path)) {
+                copy($tmpPath, $path);
+                @unlink($tmpPath);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'savePptx failed: ' . $e->getMessage());
+            return '⚠ Failed to generate presentation: ' . $e->getMessage();
+        }
+
+        $url  = '/file/' . $companySlug . '/' . $name;
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        $this->recordArtifact('document', $safe, $url, $mime);
+
+        return "✓ Presentation saved\nFILE_URL: {$url}\nFilename: {$safe}\n(Download and open in Microsoft PowerPoint or LibreOffice Impress)";
+    }
+
+    // ── Tool: Generate Word Document (.docx) ─────────────────────────────
+
+    private function saveDocx(string $filename, string $title, string $content): string
+    {
+        $safe = preg_replace('/[^a-zA-Z0-9._\-]/', '_', basename($filename));
+        if (!preg_match('/\.docx$/i', $safe)) $safe .= '.docx';
+        if ($safe === '.docx') $safe = 'document.docx';
+
+        $name = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . $safe;
+
+        $companySlug = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->companyId ?: 'shared');
+        $base = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
+        $dir  = $base . DIRECTORY_SEPARATOR . $companySlug;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return "⚠ Cannot save document — public/generated/{$companySlug}/ is not writable.";
+        }
+
+        $path = $dir . DIRECTORY_SEPARATOR . $name;
+
+        try {
+            $service = new DocxService();
+            $tmpPath = $service->generate($title, $content);
+            if (!rename($tmpPath, $path)) {
+                copy($tmpPath, $path);
+                @unlink($tmpPath);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'saveDocx failed: ' . $e->getMessage());
+            return '⚠ Failed to generate Word document: ' . $e->getMessage();
+        }
+
+        $url  = '/file/' . $companySlug . '/' . $name;
+        $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        $this->recordArtifact('document', $safe, $url, $mime);
+
+        return "✓ Word document saved\nFILE_URL: {$url}\nFilename: {$safe}\n(Download and open in Microsoft Word or LibreOffice Writer)";
+    }
+
+    // ── Tool: Generate Excel Spreadsheet (.xlsx) ─────────────────────────
+
+    private function saveXlsx(string $filename, string $title, array $sheets): string
+    {
+        $safe = preg_replace('/[^a-zA-Z0-9._\-]/', '_', basename($filename));
+        if (!preg_match('/\.xlsx$/i', $safe)) $safe .= '.xlsx';
+        if ($safe === '.xlsx') $safe = 'spreadsheet.xlsx';
+
+        $name = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . $safe;
+
+        $companySlug = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->companyId ?: 'shared');
+        $base = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
+        $dir  = $base . DIRECTORY_SEPARATOR . $companySlug;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return "⚠ Cannot save spreadsheet — public/generated/{$companySlug}/ is not writable.";
+        }
+
+        $path = $dir . DIRECTORY_SEPARATOR . $name;
+
+        try {
+            $service = new ExcelService();
+            $tmpPath = $service->generate($title, $sheets);
+            if (!rename($tmpPath, $path)) {
+                copy($tmpPath, $path);
+                @unlink($tmpPath);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'saveXlsx failed: ' . $e->getMessage());
+            return '⚠ Failed to generate spreadsheet: ' . $e->getMessage();
+        }
+
+        $url  = '/file/' . $companySlug . '/' . $name;
+        $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        $this->recordArtifact('document', $safe, $url, $mime);
+
+        return "✓ Excel spreadsheet saved\nFILE_URL: {$url}\nFilename: {$safe}\n(Download and open in Microsoft Excel or Google Sheets)";
+    }
+
+    // ── Tool: Save Raw File (code deliverable) ───────────────────────────
+
+    private function saveFile(string $filename, string $content): string
+    {
+        // Strip markdown code fences the agent may have wrapped the content in
+        $content = preg_replace('/^\s*```[a-zA-Z]*\s*\n?/', '', $content);
+        $content = preg_replace('/\n?```\s*$/', '', $content);
+        $content = trim($content);
+
+        $safe = preg_replace('/[^a-zA-Z0-9._\-]/', '_', basename($filename));
+        if ($safe === '' || $safe === '.') $safe = 'file.txt';
+
+        $name = date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . $safe;
+
+        $ext = strtolower(pathinfo($safe, PATHINFO_EXTENSION));
+        $mimes = [
+            'html' => 'text/html',  'htm' => 'text/html',
+            'css'  => 'text/css',
+            'js'   => 'application/javascript',
+            'json' => 'application/json',
+            'txt'  => 'text/plain', 'md'  => 'text/markdown',
+            'xml'  => 'text/xml',   'csv' => 'text/csv',
+            'php'  => 'text/plain', 'py'  => 'text/plain',
+            'sql'  => 'text/plain',
+        ];
+        $mime = $mimes[$ext] ?? 'text/plain';
+
+        // Save under a company-specific subfolder so each company's Files tab
+        // only shows its own files. Served through /file/{companyId}/{name} which
+        // sets Content-Type explicitly in PHP (Supabase serves HTML as text/plain).
+        $companySlug = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->companyId ?: 'shared');
+        $base = rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'generated';
+        $dir  = $base . DIRECTORY_SEPARATOR . $companySlug;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return "⚠ Cannot save file — public/generated/{$companySlug}/ is not writable.";
+        }
+        if (file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $content) === false) {
+            return "⚠ Failed to write file.";
+        }
+        $url = '/file/' . $companySlug . '/' . $name;
+
+        $this->recordArtifact('document', $safe, $url, $mime);
+
+        return "✓ File saved\nFILE_URL: {$url}\nFilename: {$safe}";
     }
 
     // ── Tool: Hire Agent ─────────────────────────────────────────────────
@@ -474,6 +926,15 @@ Search Google for current information, research, pricing, news, contacts.
 query: your search query here
 [/SEARCH]
 
+### 👤 Search Real Person
+Look up any real person — executives, public figures, professionals, influencers.
+Returns a structured profile: knowledge graph, LinkedIn, web results, and recent news.
+
+[SEARCH_PERSON]
+name: Full Name Here
+context: optional — narrows results, e.g. "Philippines", "CEO", "athlete"
+[/SEARCH_PERSON]
+
 ### 🩺 Check Site (live website QA)
 Visit a REAL web page and get verifiable health facts: HTTP status, load time,
 HTTPS/SSL validity, redirects, page title, forms present, and a 404 scan.
@@ -515,8 +976,139 @@ prompt: A detailed description of the image to create
 size: 1024x1024
 [/GENERATE_IMAGE]
 
-### 📄 Generate Document (saved as a downloadable file)
-Produce a report, proposal, or document. It is saved to the Files library and can be printed to PDF.
+⚠️ IMAGE FALLBACK RULE: If image generation is unavailable or produces only a placeholder (showing the prompt as text on a dark background), offer to create an HTML poster/design instead using GENERATE_FILE. An HTML poster with CSS can look just as professional and can be printed to PDF. Always offer this alternative when image generation fails.
+
+### 💾 Generate File — CODE DELIVERABLES (HTML, CSS, JS, Python, SQL, etc.)
+⚠️ CRITICAL RULE: When asked to CREATE any code file, webpage, script, or program,
+you MUST use this tool to save it as a real downloadable file.
+NEVER paste raw code into the chat message — always use GENERATE_FILE instead.
+This applies to: HTML pages, CSS stylesheets, JavaScript files, Python scripts,
+SQL queries, JSON configs, XML files, and any other code or text file.
+
+[GENERATE_FILE]
+filename: facebook-homepage.html
+content:
+<!DOCTYPE html>
+<html lang="en">
+...complete file content here (no code fences, no markdown — raw file content only)...
+</html>
+[/GENERATE_FILE]
+
+Examples of when to use GENERATE_FILE (not inline code):
+- "create a Facebook homepage in HTML/CSS" → use GENERATE_FILE with filename: facebook.html
+- "write a Python scraper" → use GENERATE_FILE with filename: scraper.py
+- "build a landing page" → use GENERATE_FILE with filename: landing.html
+- "write a SQL migration" → use GENERATE_FILE with filename: migration.sql
+
+### 📊 Generate PowerPoint Presentation
+Create a real .pptx file that can be opened in Microsoft PowerPoint or LibreOffice Impress.
+Use this for slide decks, pitch decks, reports, proposals, or any presentation.
+
+[GENERATE_PPTX]
+filename: company-overview.pptx
+theme: dark
+---
+title: Company Overview
+subtitle: Positive Nation LLC — 2026
+type: title
+---
+title: Executive Summary
+content:
+• Q2 revenue grew 23% year-over-year
+• 50,000 new community members joined
+• Launched Positive Nation Economy beta
+---
+title: Key Metrics
+content:
+• Monthly Active Users: 125,000
+• Engagement Rate: 67%
+• Revenue: $2.4M
+---
+title: Next Steps
+content:
+• Scale the Positive Nation Economy
+• Launch ambassador program
+• Expand to 3 new markets
+[/GENERATE_PPTX]
+
+Rules for GENERATE_PPTX:
+- Use `---` (three dashes alone on a line) to separate slides
+- First slide usually has `type: title` with a subtitle
+- All other slides use `type: content` (or omit type — content is default)
+- List bullets with • or - on separate lines under `content:`
+- `theme: dark` (navy + gold, default) or `theme: light` (white + gold)
+- NEVER paste raw slide content in the chat — always use GENERATE_PPTX
+
+### 📝 Generate Word Document (.docx)
+Create a real .docx file that opens in Microsoft Word or LibreOffice Writer.
+Supports headings, bullet lists, numbered lists, bold, italic, and page breaks.
+
+[GENERATE_DOCX]
+filename: q2-report.docx
+title: Q2 2026 Marketing Report
+content:
+# Executive Summary
+
+This report covers **Q2 2026** performance for Positive Nation LLC.
+
+## Key Highlights
+
+- Revenue grew 23% year-over-year
+- 50,000 new community members joined
+- Launched Positive Nation Economy beta
+
+## Financials
+
+### Revenue
+Total revenue for Q2 was *$2.4M*, exceeding our target by 12%.
+
+### Next Steps
+- Scale the Positive Nation Economy
+- Launch ambassador program
+[/GENERATE_DOCX]
+
+Rules for GENERATE_DOCX:
+- `# Heading` / `## Subheading` / `### Sub-subheading` → heading levels
+- `- item` or `• item` → bullet list
+- `1. item` → numbered list
+- `**text**` → bold, `*text*` → italic
+- `---` alone on a line → page break
+- NEVER paste raw document text in the chat — always use GENERATE_DOCX
+
+### 📊 Generate Excel Spreadsheet (.xlsx)
+Create a real .xlsx file that opens in Microsoft Excel or Google Sheets.
+Use this for data tables, reports, budgets, trackers, org data — anything tabular.
+Supports multiple sheets, styled headers, alternating rows, auto-filter, and frozen header row.
+
+[GENERATE_XLSX]
+filename: q2-sales-report.xlsx
+title: Q2 2026 Sales Report
+
+sheet: Summary
+headers: Metric, Value, Change
+row: Total Revenue, $2,400,000, +23%
+row: New Customers, 1250, +18%
+row: Churn Rate, 3.2%, -1.1%
+row: Avg Deal Size, $1920, +4%
+
+sheet: By Region
+headers: Region, Revenue, Customers, Growth
+row: North America, $1,200,000, 620, +28%
+row: Europe, $740,000, 390, +19%
+row: Asia Pacific, $460,000, 240, +15%
+[/GENERATE_XLSX]
+
+Rules for GENERATE_XLSX:
+- Use `sheet: Name` to start each sheet (or omit for a single unnamed sheet)
+- `headers:` is a comma-separated list of column headers
+- Each `row:` is a comma-separated list of values matching the headers
+- Wrap values containing commas in quotes: `row: "Smith, John", $50000`
+- Pure numbers (no $ or %) are stored as Excel numbers (sortable/summable)
+- NEVER paste raw table data in the chat — always use GENERATE_XLSX
+
+### 📄 Generate Document (reports and proposals in markdown)
+For text documents, reports, and proposals — NOT for code files (use GENERATE_FILE for code).
+Saved to the Files library and can be printed to PDF.
 
 [GENERATE_DOC]
 title: Q2 Marketing Report
@@ -559,6 +1151,9 @@ agent: Agent Name
 - Use [SEARCH] before stating any current facts, prices, or statistics
 - You can use multiple tools in a single response
 - After tool results are shown, continue your analysis using that information
+- ⚠️ NEVER paste raw code (HTML/CSS/JS/Python/SQL/etc.) directly into the chat — ALWAYS use GENERATE_FILE
+- ⚠️ When asked for a table, spreadsheet, or data export — use GENERATE_XLSX, not a markdown table in the chat
+- ⚠️ After GENERATE_FILE, GENERATE_DOC, GENERATE_XLSX, GENERATE_PPTX, or GENERATE_DOCX saves a file, do NOT repeat or show the raw content again — just confirm the filename and say it is ready
 - When fully done, end your response with exactly:
   STATUS: done | [one sentence summary of what was accomplished]
 DOCS;
